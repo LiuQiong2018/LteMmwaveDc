@@ -5,6 +5,7 @@
 *.py
 *.pyc
 
+build/
 waf-tools
 
 *.txt
