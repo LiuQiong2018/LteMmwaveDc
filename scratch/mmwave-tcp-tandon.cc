@@ -135,7 +135,7 @@ main (int argc, char *argv[])
   // LogComponentEnable("TcpSocketBase", LOG_LEVEL_INFO);
 
 	uint16_t nodeNum = 2;
-	double simStopTime = 50;
+	double simStopTime = 15;
 	bool harqEnabled = true;
 	bool rlcAmEnabled = true;
 

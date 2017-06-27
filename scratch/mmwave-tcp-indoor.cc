@@ -105,8 +105,8 @@ main (int argc, char *argv[])
   // LogComponentEnable("TcpCongestionOps", LOG_LEVEL_INFO);
   // LogComponentEnable("TcpSocketBase", LOG_LEVEL_INFO);
 
-	uint16_t nodeNum = 3;
-	double simStopTime = 20;
+	uint16_t nodeNum = 1;
+	double simStopTime = 15;
 	bool harqEnabled = true;
 	bool rlcAmEnabled = true;
 	std::string protocol = "TcpNewReno";
