@@ -43,6 +43,7 @@ LteUeRrcProtocolIdeal::LteUeRrcProtocolIdeal ()
   :  m_ueRrcSapProvider (0),
      m_enbRrcSapProvider (0)
 {
+  NS_LOG_FUNCTION (this);
   m_ueRrcSapUser = new MemberLteUeRrcSapUser<LteUeRrcProtocolIdeal> (this);
 }
 
@@ -72,6 +73,7 @@ LteUeRrcProtocolIdeal::GetTypeId (void)
 void 
 LteUeRrcProtocolIdeal::SetLteUeRrcSapProvider (LteUeRrcSapProvider* p)
 {
+  NS_LOG_FUNCTION (this);
   m_ueRrcSapProvider = p;
 }
 
@@ -84,6 +86,7 @@ LteUeRrcProtocolIdeal::GetLteUeRrcSapUser ()
 void 
 LteUeRrcProtocolIdeal::SetUeRrc (Ptr<LteUeRrc> rrc)
 {
+  NS_LOG_FUNCTION (this);
   m_rrc = rrc;
 }
 
@@ -99,6 +102,7 @@ LteUeRrcProtocolIdeal::DoSendRrcConnectionRequest (LteRrcSap::RrcConnectionReque
 {
   // initialize the RNTI and get the EnbLteRrcSapProvider for the
   // eNB we are currently attached to
+  NS_LOG_FUNCTION (this);
   m_rnti = m_rrc->GetRnti ();
   SetEnbRrcSapProvider ();
     
@@ -112,6 +116,7 @@ LteUeRrcProtocolIdeal::DoSendRrcConnectionRequest (LteRrcSap::RrcConnectionReque
 void 
 LteUeRrcProtocolIdeal::DoSendRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg)
 {
+  NS_LOG_FUNCTION (this);
   Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
 		       &LteEnbRrcSapProvider::RecvRrcConnectionSetupCompleted,
                        m_enbRrcSapProvider,
@@ -124,6 +129,7 @@ LteUeRrcProtocolIdeal::DoSendRrcConnectionReconfigurationCompleted (LteRrcSap::R
 {
   // re-initialize the RNTI and get the EnbLteRrcSapProvider for the
   // eNB we are currently attached to
+  NS_LOG_FUNCTION (this);
   m_rnti = m_rrc->GetRnti ();
   SetEnbRrcSapProvider ();
     
@@ -137,6 +143,7 @@ LteUeRrcProtocolIdeal::DoSendRrcConnectionReconfigurationCompleted (LteRrcSap::R
 void 
 LteUeRrcProtocolIdeal::DoSendRrcConnectionReestablishmentRequest (LteRrcSap::RrcConnectionReestablishmentRequest msg)
 {
+  NS_LOG_FUNCTION (this);
    Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
 		       &LteEnbRrcSapProvider::RecvRrcConnectionReestablishmentRequest,
                        m_enbRrcSapProvider,
@@ -147,6 +154,7 @@ LteUeRrcProtocolIdeal::DoSendRrcConnectionReestablishmentRequest (LteRrcSap::Rrc
 void 
 LteUeRrcProtocolIdeal::DoSendRrcConnectionReestablishmentComplete (LteRrcSap::RrcConnectionReestablishmentComplete msg)
 {
+  NS_LOG_FUNCTION (this);
    Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
 		       &LteEnbRrcSapProvider::RecvRrcConnectionReestablishmentComplete,
                        m_enbRrcSapProvider,
@@ -157,6 +165,7 @@ msg);
 void 
 LteUeRrcProtocolIdeal::DoSendMeasurementReport (LteRrcSap::MeasurementReport msg)
 {
+  NS_LOG_FUNCTION (this);
    Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
                         &LteEnbRrcSapProvider::RecvMeasurementReport,
                         m_enbRrcSapProvider,
@@ -167,6 +176,7 @@ LteUeRrcProtocolIdeal::DoSendMeasurementReport (LteRrcSap::MeasurementReport msg
 void 
 LteUeRrcProtocolIdeal::SetEnbRrcSapProvider ()
 {
+  NS_LOG_FUNCTION (this);
   uint16_t cellId = m_rrc->GetCellId ();  
 
   // walk list of all nodes to get the peer eNB
@@ -208,10 +218,18 @@ LteUeRrcProtocolIdeal::SetEnbRrcSapProvider ()
 NS_OBJECT_ENSURE_REGISTERED (LteEnbRrcProtocolIdeal);
 
 LteEnbRrcProtocolIdeal::LteEnbRrcProtocolIdeal ()
-  :  m_enbRrcSapProvider (0)
+  :  m_enbRrcSapProvider (0),
+     m_isSenb (false) // woody
 {
   NS_LOG_FUNCTION (this);
   m_enbRrcSapUser = new MemberLteEnbRrcSapUser<LteEnbRrcProtocolIdeal> (this);
+}
+
+void
+LteEnbRrcProtocolIdeal::SetSenb () // woody
+{
+  NS_LOG_FUNCTION (this);
+  m_isSenb = true;
 }
 
 LteEnbRrcProtocolIdeal::~LteEnbRrcProtocolIdeal ()
@@ -337,7 +355,9 @@ LteEnbRrcProtocolIdeal::DoSendSystemInformation (LteRrcSap::SystemInformation ms
           Ptr<LteUeNetDevice> ueDev = node->GetDevice (j)->GetObject <LteUeNetDevice> ();
           if (ueDev != 0)
             {
-              Ptr<LteUeRrc> ueRrc = ueDev->GetRrc ();              
+              Ptr<LteUeRrc> ueRrc;
+	      if (m_isSenb) {ueRrc = ueDev->GetRrcDc ();} // woody
+              else {ueRrc = ueDev->GetRrc ();}
               NS_LOG_LOGIC ("considering UE IMSI " << ueDev->GetImsi () << " that has cellId " << ueRrc->GetCellId ());
               if (ueRrc->GetCellId () == m_cellId)
                 {       

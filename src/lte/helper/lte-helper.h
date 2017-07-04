@@ -287,6 +287,11 @@ public:
    * \return the NetDeviceContainer with the newly created devices
    */
   NetDeviceContainer InstallEnbDevice (NodeContainer c);
+  NetDeviceContainer InstallSenbDevice (NodeContainer c); // woody
+
+  void NotifyEnbNeighbor (Ptr<Node> enb, Ptr<Node> senb); // woody3C
+
+  void ConnectAssistInfo (Ptr<Node> enb, Ptr<Node> senb, Ptr<Node> ue, uint8_t dcType); // woody
 
   /**
    * Create a set of UE devices.
@@ -295,6 +300,7 @@ public:
    * \return the NetDeviceContainer with the newly created devices
    */
   NetDeviceContainer InstallUeDevice (NodeContainer c);
+  NetDeviceContainer InstallDcUeDevice (NodeContainer c); // woody
 
   /**
    * \brief Enables automatic attachment of a set of UE devices to a suitable
@@ -362,6 +368,7 @@ public:
    * procedure.
    */
   void Attach (Ptr<NetDevice> ueDevice, Ptr<NetDevice> enbDevice);
+  void AttachDc (Ptr<NetDevice> ueDevice, Ptr<NetDevice> enbDevice, Ptr<EpcTft> tftDc, uint8_t dcType); // woody, woody3C
 
   /** 
    * \brief Manual attachment of a set of UE devices to the network via the
@@ -601,6 +608,7 @@ private:
    * \return pointer to the created device
    */
   Ptr<NetDevice> InstallSingleEnbDevice (Ptr<Node> n);
+  Ptr<NetDevice> InstallSingleSenbDevice (Ptr<Node> n); // woody
 
   /**
    * Create a UE device (LteUeNetDevice) on the given node
@@ -608,6 +616,7 @@ private:
    * \return pointer to the created device
    */
   Ptr<NetDevice> InstallSingleUeDevice (Ptr<Node> n);
+  Ptr<NetDevice> InstallSingleDcUeDevice (Ptr<Node> n); // woody
 
   /**
    * The actual function to trigger a manual handover.
@@ -642,6 +651,11 @@ private:
   Ptr<SpectrumChannel> m_downlinkChannel;
   /// The uplink LTE channel used in the simulation.
   Ptr<SpectrumChannel> m_uplinkChannel;
+ 
+ Ptr<SpectrumChannel> m_downlinkChannel_1;
+  /// The uplink LTE channel used in the simulation.
+  Ptr<SpectrumChannel> m_uplinkChannel_1;
+
   /// The path loss model used in the downlink channel.
   Ptr<Object> m_downlinkPathlossModel;
   /// The path loss model used in the uplink channel.
@@ -731,6 +745,8 @@ private:
    * DL-CQI will be calculated from PDCCH as signal and PDCCH as interference.
    */
   bool m_usePdschForCqiGeneration;
+
+  uint16_t m_MenbId; // woody3C
 
 }; // end of `class LteHelper`
 

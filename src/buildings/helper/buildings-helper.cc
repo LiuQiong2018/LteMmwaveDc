@@ -91,7 +91,7 @@ BuildingsHelper::MakeConsistent (Ptr<MobilityModel> mm)
           found = true;
           uint16_t floor = (*bit)->GetFloor (pos);
           uint16_t roomX = (*bit)->GetRoomX (pos);
-          uint16_t roomY = (*bit)->GetRoomY (pos);	   
+          uint16_t roomY = (*bit)->GetRoomY (pos);	  
           bmm->SetIndoor (*bit, floor, roomX, roomY);	      
         }		    	  
     }

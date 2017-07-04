@@ -30,7 +30,8 @@
 #include "epc-gtpu-header.h"
 #include "eps-bearer-tag.h"
 
-
+#include "ns3/simulator.h"
+#include "Gtpu_SN_Header.h"
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("EpcEnbApplication");
@@ -86,6 +87,7 @@ EpcEnbApplication::EpcEnbApplication (Ptr<Socket> lteSocket, Ptr<Socket> s1uSock
     m_gtpuUdpPort (2152), // fixed by the standard
     m_s1SapUser (0),
     m_s1apSapMme (0),
+    m_isSenb (false), // woody3C
     m_cellId (cellId)
 {
   NS_LOG_FUNCTION (this << lteSocket << s1uSocket << sgwS1uAddress);
@@ -101,6 +103,11 @@ EpcEnbApplication::~EpcEnbApplication (void)
   NS_LOG_FUNCTION (this);
 }
 
+void
+EpcEnbApplication::SetSenb (void) // woody3C
+{
+  m_isSenb = true;
+}
 
 void 
 EpcEnbApplication::SetS1SapUser (EpcEnbS1SapUser * s)
@@ -212,6 +219,7 @@ EpcEnbApplication::DoInitialContextSetupRequest (uint64_t mmeUeS1Id, uint16_t en
       params.bearer = erabIt->erabLevelQosParameters;
       params.bearerId = erabIt->erabId;
       params.gtpTeid = erabIt->sgwTeid;
+      params.dcType = erabIt->dcType; // woody3C
       m_s1SapUser->DataRadioBearerSetupRequest (params);
 
       EpsFlowId_t rbid (rnti, erabIt->erabId);
@@ -259,6 +267,10 @@ EpcEnbApplication::RecvFromLteSocket (Ptr<Socket> socket)
       std::map<uint8_t, uint32_t>::iterator bidIt = rntiIt->second.find (bid);
       NS_ASSERT (bidIt != rntiIt->second.end ());
       uint32_t teid = bidIt->second;
+
+      if (m_isSenb) NS_LOG_INFO ("**SeNB, " << Simulator::Now ().GetSeconds () << "s forward a packet UL"); // woody, for observing UL packet flow
+      else NS_LOG_INFO ("**MeNB, " << Simulator::Now ().GetSeconds () << "s forward a packet UL");
+
       SendToS1uSocket (packet, teid);
     }
 }
@@ -268,13 +280,28 @@ EpcEnbApplication::RecvFromS1uSocket (Ptr<Socket> socket)
 {
   NS_LOG_FUNCTION (this << socket);  
   NS_ASSERT (socket == m_s1uSocket);
-  Ptr<Packet> packet = socket->Recv ();
+//  Ptr<Packet> packet = socket->Recv ();
+
+  // woody, for observing packet flow
+  Address from;
+  Ptr<Packet> packet = socket->RecvFrom (from);
+
+  NS_LOG_INFO ("**EnB, " << Simulator::Now ().GetSeconds () << "s "
+              <<  packet->GetSize () << " bytes from "
+              << InetSocketAddress::ConvertFrom(from).GetIpv4 ()
+              << " port " << InetSocketAddress::ConvertFrom (from).GetPort ());
+
   GtpuHeader gtpu;
   packet->RemoveHeader (gtpu);
+  //sjkang0601
+  Gtpu_SN_Header gtpu_SN_Header; //sjkang0601
+  gtpu_SN_Header.SetGtpuSN(gtpu.GetSequenceNumber());//sjkang0601
+//std::cout << gtpu_SN_Header.GetGtpuSN() << std::endl;
+  packet->AddHeader(gtpu_SN_Header); //sjkang
+///////////////////////////////
   uint32_t teid = gtpu.GetTeid ();
   std::map<uint32_t, EpsFlowId_t>::iterator it = m_teidRbidMap.find (teid);
   NS_ASSERT (it != m_teidRbidMap.end ());
-
   SendToLteSocket (packet, it->second.m_rnti, it->second.m_bid);
 }
 
@@ -297,6 +324,7 @@ EpcEnbApplication::SendToS1uSocket (Ptr<Packet> packet, uint32_t teid)
   gtpu.SetTeid (teid);
   // From 3GPP TS 29.281 v10.0.0 Section 5.1
   // Length of the payload + the non obligatory GTP-U header
+
   gtpu.SetLength (packet->GetSize () + gtpu.GetSerializedSize () - 8);  
   packet->AddHeader (gtpu);
   uint32_t flags = 0;

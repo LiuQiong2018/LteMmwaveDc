@@ -140,6 +140,7 @@ public:
     EpsBearer   erabLevelQosParameters;
     Ipv4Address transportLayerAddress;
     uint32_t    sgwTeid;    
+    uint8_t     dcType; // woody
   };
 
   /** 

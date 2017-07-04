@@ -112,6 +112,7 @@ public:
     uint8_t bearerId; /**< the EPS Bearer Identifier */
     uint32_t    gtpTeid; /**< S1-bearer GTP tunnel endpoint identifier, see 36.423 9.2.1 */
     Ipv4Address transportLayerAddress; /**< IP Address of the SGW, see 36.423 9.2.1 */
+    uint8_t dcType; // woody3C
   };
 
   /**

@@ -24,6 +24,11 @@
 #include "ns3/lte-rlc-sequence-number.h"
 #include "ns3/lte-rlc.h"
 
+// woody
+#include "ns3/lte-rrc-sap.h"
+#include "ns3/lte-enb-rrc.h"
+#include "ns3/lte-ue-rrc.h"
+
 #include <ns3/event-id.h>
 #include <map>
 #include <deque>
@@ -52,6 +57,13 @@ public:
   virtual void DoNotifyTxOpportunity (uint32_t bytes, uint8_t layer, uint8_t harqId);
   virtual void DoNotifyHarqDeliveryFailure ();
   virtual void DoReceivePdu (Ptr<Packet> p);
+
+  // woody
+  virtual double GetBufferSize ();
+  virtual void SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr);
+  virtual void IsEnbRlc (void);
+  virtual void SetRrc (Ptr<LteEnbRrc> enbRrc, Ptr<LteUeRrc> ueRrc);
+  virtual void CalculatePathThroughput (std::ofstream *stream);
 
 private:
   void ExpireReorderingTimer (void);

@@ -24,6 +24,10 @@
 #include "ns3/lte-rlc-sequence-number.h"
 #include "ns3/lte-rlc.h"
 
+#include "ns3/lte-rrc-sap.h" // woody
+#include "ns3/lte-enb-rrc.h" // woody
+#include "ns3/lte-ue-rrc.h" // woody 
+
 #include <ns3/event-id.h>
 #include <map>
 
@@ -52,7 +56,30 @@ public:
   virtual void DoNotifyHarqDeliveryFailure ();
   virtual void DoReceivePdu (Ptr<Packet> p);
 
+  // sjkang
+  virtual double GetBufferSize ();
+  void GetReportBufferStatus( LteMacSapProvider::ReportBufferStatusParameters r);
+  int sum;
+  int p;
+  double averageBufferSize;
+  Time SamplingTime;
+  uint32_t ArrayInMovingWindow[11];
+
+  // woody
+  virtual void SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr);
+  virtual void IsEnbRlc (void);
+  virtual void SetRrc (Ptr<LteEnbRrc> enbRrc, Ptr<LteUeRrc> ueRrc);
+  virtual void CalculatePathThroughput (std::ofstream *stream);
+
 private:
+  // woody
+  LteRrcSap::AssistInfo *m_assistInfoPtr;
+  bool m_isEnbRlc;
+  Ptr<LteEnbRrc> m_enbRrc;
+  Ptr<LteUeRrc> m_ueRrc;
+  uint32_t sumPacketSize;
+  uint32_t lastSumPacketSize;
+
   void ExpireReorderingTimer (void);
   void ExpireRbsTimer (void);
 

@@ -81,6 +81,7 @@ public:
    */
   virtual ~EpcEnbApplication (void);
 
+  void SetSenb (void); // woody3C
 
   /** 
    * Set the S1 SAP User
@@ -250,6 +251,8 @@ private:
    * 
    */
   std::map<uint64_t, uint16_t> m_imsiRntiMap;
+
+  bool m_isSenb; // woody3C
 
   uint16_t m_cellId;
 

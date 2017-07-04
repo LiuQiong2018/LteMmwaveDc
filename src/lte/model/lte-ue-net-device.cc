@@ -78,6 +78,21 @@ TypeId LteUeNetDevice::GetTypeId (void)
                    PointerValue (),
                    MakePointerAccessor (&LteUeNetDevice::m_phy),
                    MakePointerChecker <LteUePhy> ())
+    .AddAttribute ("LteUeRrcDc", // woody
+                   "The RRC associated to this UeNetDevice",
+                   PointerValue (),
+                   MakePointerAccessor (&LteUeNetDevice::m_rrcDc),
+                   MakePointerChecker <LteUeRrc> ())
+    .AddAttribute ("LteUeMacDc",
+                   "The MAC associated to this UeNetDevice",
+                   PointerValue (),
+                   MakePointerAccessor (&LteUeNetDevice::m_macDc),
+                   MakePointerChecker <LteUeMac> ())
+    .AddAttribute ("LteUePhyDc",
+                   "The PHY associated to this UeNetDevice",
+                   PointerValue (),
+                   MakePointerAccessor (&LteUeNetDevice::m_phyDc),
+                   MakePointerChecker <LteUePhy> ())
     .AddAttribute ("Imsi",
                    "International Mobile Subscriber Identity assigned to this UE",
                    UintegerValue (0),
@@ -89,6 +104,13 @@ TypeId LteUeNetDevice::GetTypeId (void)
                    UintegerValue (100),
                    MakeUintegerAccessor (&LteUeNetDevice::SetDlEarfcn,
                                          &LteUeNetDevice::GetDlEarfcn),
+                   MakeUintegerChecker<uint16_t> (0, 6149))
+    .AddAttribute ("DlEarfcn_DC",
+                   "Downlink E-UTRA Absolute Radio Frequency Channel Number (EARFCN) for DC"
+                   "as per 3GPP 36.101 Section 5.7.3. ",
+                   UintegerValue (1000),
+                   MakeUintegerAccessor (&LteUeNetDevice::SetDlEarfcn_DC,
+                                         &LteUeNetDevice::GetDlEarfcn_DC),
                    MakeUintegerChecker<uint16_t> (0, 6149))
     .AddAttribute ("CsgId",
                    "The Closed Subscriber Group (CSG) identity that this UE is associated with, "
@@ -109,6 +131,7 @@ LteUeNetDevice::LteUeNetDevice (void)
   : m_isConstructed (false)
 {
   NS_LOG_FUNCTION (this);
+  m_isDc = false;
 }
 
 LteUeNetDevice::~LteUeNetDevice (void)
@@ -143,6 +166,7 @@ LteUeNetDevice::UpdateConfig (void)
                          << " CSG ID " << m_csgId);
       m_nas->SetImsi (m_imsi);
       m_rrc->SetImsi (m_imsi);
+      if (m_isDc) m_rrcDc->SetImsi (m_imsi); // woody
       m_nas->SetCsgId (m_csgId); // this also handles propagation to RRC
     }
   else
@@ -171,6 +195,12 @@ LteUeNetDevice::GetRrc (void) const
   return m_rrc;
 }
 
+Ptr<LteUeRrc>
+LteUeNetDevice::GetRrcDc (void) const // woody
+{
+  NS_LOG_FUNCTION (this);
+  return m_rrcDc;
+}
 
 Ptr<LteUePhy>
 LteUeNetDevice::GetPhy (void) const
@@ -206,6 +236,20 @@ LteUeNetDevice::SetDlEarfcn (uint16_t earfcn)
   NS_LOG_FUNCTION (this << earfcn);
   m_dlEarfcn = earfcn;
 }
+//sjkang0604
+uint16_t
+LteUeNetDevice::GetDlEarfcn_DC () const
+{
+  NS_LOG_FUNCTION (this);
+  return m_dlEarfcn_DC;
+}
+
+void
+LteUeNetDevice::SetDlEarfcn_DC (uint16_t earfcn)
+{
+  NS_LOG_FUNCTION (this << earfcn);
+  m_dlEarfcn_DC = earfcn;
+}
 
 uint32_t
 LteUeNetDevice::GetCsgId () const
@@ -237,6 +281,12 @@ LteUeNetDevice::GetTargetEnb (void)
   return m_targetEnb;
 }
 
+void
+LteUeNetDevice::SetDc (void) // woody
+{
+  m_isDc = true;
+}
+
 void 
 LteUeNetDevice::DoInitialize (void)
 {
@@ -246,6 +296,11 @@ LteUeNetDevice::DoInitialize (void)
   m_phy->Initialize ();
   m_mac->Initialize ();
   m_rrc->Initialize ();
+  if (m_isDc) {
+      m_phyDc->Initialize (); // woody
+      m_macDc->Initialize ();
+      m_rrcDc->Initialize ();
+  }
 }
 
 bool

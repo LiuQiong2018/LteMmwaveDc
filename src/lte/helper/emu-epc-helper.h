@@ -75,10 +75,13 @@ public:
 
   // inherited from EpcHelper
   virtual void AddEnb (Ptr<Node> enbNode, Ptr<NetDevice> lteEnbNetDevice, uint16_t cellId);
+  virtual void AddSenb (Ptr<Node> enbNode, Ptr<NetDevice> lteEnbNetDevice, uint16_t cellId); // woody
   virtual void AddUe (Ptr<NetDevice> ueLteDevice, uint64_t imsi);
   virtual void AddX2Interface (Ptr<Node> enbNode1, Ptr<Node> enbNode2);
   virtual uint8_t ActivateEpsBearer (Ptr<NetDevice> ueLteDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer);
+  virtual uint8_t ActivateEpsBearerDc (Ptr<NetDevice> ueLteDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer, uint8_t dcType); // woody, woody3C
   virtual Ptr<Node> GetPgwNode ();
+  virtual Ptr<EpcMme> GetMme (); // woody3C
   virtual Ipv4InterfaceContainer AssignUeIpv4Address (NetDeviceContainer ueDevices);
   virtual Ipv4Address GetUeDefaultGatewayAddress ();
 

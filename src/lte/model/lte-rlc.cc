@@ -27,6 +27,8 @@
 // #include "lte-mac-sap.h"
 #include "ns3/lte-rlc-sap.h"
 // #include "ff-mac-sched-sap.h"
+#include "ns3/lte-enb-rrc.h" // woody
+#include "ns3/lte-ue-rrc.h" // woody 
 
 namespace ns3 {
 
@@ -285,8 +287,39 @@ LteRlcSm::ReportBufferStatus ()
   m_macSapProvider->ReportBufferStatus (p);
 }
 
+double
+LteRlcSm::GetBufferSize () // sjkang
+{
+  NS_FATAL_ERROR ("Not implemented yet");
+  return -1;
+}
 
+void
+LteRlcSm::SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr) // woody
+{
+  NS_FATAL_ERROR ("Not implemented yet");
+  return;
+}
 
+void
+LteRlcSm::IsEnbRlc (void) // woody
+{
+  NS_FATAL_ERROR ("Not implemented yet");
+  return;
+}
+
+void
+LteRlcSm::SetRrc (Ptr<LteEnbRrc> enbRrc, Ptr<LteUeRrc> ueRrc) // woody
+{
+  NS_FATAL_ERROR ("Not implemented yet");
+  return;
+}
+
+void
+LteRlcSm::CalculatePathThroughput (std::ofstream *streamPathThroughput) // woody
+{
+  NS_FATAL_ERROR ("Not implemented yet");
+}
 
 //////////////////////////////////////////
 

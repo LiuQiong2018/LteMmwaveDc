@@ -348,5 +348,26 @@ MmWavePointToPointEpcHelper::GetUeDefaultGatewayAddress ()
   return m_sgwPgw->GetObject<Ipv4> ()->GetAddress (1, 0).GetLocal ();
 }
 
+void
+MmWavePointToPointEpcHelper::AddSenb (Ptr<Node> enb, Ptr<NetDevice> lteEnbNetDevice, uint16_t cellId) // woody
+{
+  NS_LOG_FUNCTION (this << enb << lteEnbNetDevice << cellId);
+  NS_LOG_UNCOND("Not implemented yet");
+}
+
+uint8_t
+MmWavePointToPointEpcHelper::ActivateEpsBearerDc (Ptr<NetDevice> ueDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer, uint8_t dcType
+) // woody
+{
+  NS_LOG_FUNCTION (this << ueDevice << imsi);
+  NS_LOG_UNCOND("Not implemented yet");
+  return 0;
+}
+
+Ptr<EpcMme>
+MmWavePointToPointEpcHelper::GetMme () // woody3C
+{
+  return m_mme;
+}
 
 } // namespace ns3

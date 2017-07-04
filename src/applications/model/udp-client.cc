@@ -178,15 +178,18 @@ UdpClient::Send (void)
   if ((m_socket->Send (p)) >= 0)
     {
       ++m_sent;
-      NS_LOG_INFO ("TraceDelay TX " << m_size << " bytes to "
+      NS_LOG_INFO ("****Remote, " << Simulator::Now ().GetSeconds() <<"s " <<  m_size << " bytes to " // woody, logging
+                                    << peerAddressStringStream.str ());
+
+/*     NS_LOG_INFO ("TraceDelay TX " << m_size << " bytes to "
                                     << peerAddressStringStream.str () << " Uid: "
                                     << p->GetUid () << " Time: "
                                     << (Simulator::Now ()).GetSeconds ());
-
+*/
     }
   else
     {
-      NS_LOG_INFO ("Error while sending " << m_size << " bytes to "
+      NS_LOG_LOGIC ("Error while sending " << m_size << " bytes to "
                                           << peerAddressStringStream.str ());
     }
 

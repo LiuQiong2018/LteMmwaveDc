@@ -111,6 +111,7 @@ public:
   LteUeRrcSapProvider* GetUeRrcSapProvider (uint16_t rnti);
   void SetUeRrcSapProvider (uint16_t rnti, LteUeRrcSapProvider* p);
 
+  void SetSenb (); // woody
 private:
 
   // methods forwarded from LteEnbRrcSapUser
@@ -135,7 +136,8 @@ private:
   LteEnbRrcSapProvider* m_enbRrcSapProvider;
   LteEnbRrcSapUser* m_enbRrcSapUser;
   std::map<uint16_t, LteUeRrcSapProvider*> m_enbRrcSapProviderMap;
-  
+
+  bool m_isSenb; // woody  
 };
 
 

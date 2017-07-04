@@ -45,10 +45,11 @@ int
 main (int argc, char *argv[])
 {
 
-  uint16_t numberOfNodes = 2;
+  uint16_t numberOfNodes = 1;
   double simTime = 1.1;
   double distance = 60.0;
   double interPacketInterval = 100;
+  int log_packetflow = 1;
 
   // Command line arguments
   CommandLine cmd;
@@ -57,6 +58,41 @@ main (int argc, char *argv[])
   cmd.AddValue("distance", "Distance between eNBs [m]", distance);
   cmd.AddValue("interPacketInterval", "Inter packet interval [ms])", interPacketInterval);
   cmd.Parse(argc, argv);
+
+  LogComponentEnable ("LteHelper", LOG_FUNCTION);
+  LogComponentEnable ("PointToPointEpcHelper", LOG_FUNCTION);
+
+//  LogComponentEnable ("EpcEnbApplication", LOG_FUNCTION);
+//  LogComponentEnable ("EpcSgwPgwApplication", LOG_FUNCTION);
+//  LogComponentEnable ("LteUeRrc", LOG_FUNCTION);
+//  LogComponentEnable ("LteRlc", LOG_FUNCTION);
+//  LogComponentEnable ("LteRlcAm", LOG_FUNCTION);
+//  LogComponentEnable ("LteRlcUm", LOG_FUNCTION);
+//  LogComponentEnable ("LtePdcp", LOG_FUNCTION);
+//  LogComponentEnable ("EpcMme", LOG_FUNCTION);
+//  LogComponentEnable ("EpcUeNas", LOG_FUNCTION);
+//  LogComponentEnable ("LteEnbRrc", LOG_FUNCTION);
+//  LogComponentEnable ("LteEnbMac", LOG_FUNCTION);
+//  LogComponentEnable ("LteEnbPhy", LOG_FUNCTION);
+//  LogComponentEnable ("LteRrcProtocolIdeal", LOG_FUNCTION);
+//  LogComponentEnable ("LteEnbNetDevice", LOG_FUNCTION);
+//  LogComponentEnable ("LteUeMac", LOG_FUNCTION);
+//  LogComponentEnable ("LteUePhy", LOG_FUNCTION);
+//  LogComponentEnable ("EpcTftClassifier", LOG_FUNCTION);
+//  LogComponentEnable ("EpcTft", LOG_FUNCTION);
+//  LogComponentEnable ("FfMacScheduler", LOG_FUNCTION);
+//  LogComponentEnable ("LteEnbMac", LOG_DEBUG);
+//  LogComponentEnable ("LteRlcUm", LOG_LOGIC);
+//  LogComponentEnable ("EpcX2", LOG_FUNCTION);
+
+  if (log_packetflow){
+    LogComponentEnable ("LtePdcp", LOG_INFO);
+    LogComponentEnable ("EpcEnbApplication", LOG_INFO);
+    LogComponentEnable ("EpcSgwPgwApplication", LOG_INFO);
+    LogComponentEnable ("LteEnbRrc", LOG_INFO);
+    LogComponentEnable ("PacketSink", LOG_INFO);
+    LogComponentEnable ("UdpClient", LOG_INFO);
+  }
 
   Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
   Ptr<PointToPointEpcHelper>  epcHelper = CreateObject<PointToPointEpcHelper> ();
@@ -177,7 +213,7 @@ main (int argc, char *argv[])
     }
   serverApps.Start (Seconds (0.01));
   clientApps.Start (Seconds (0.01));
-  lteHelper->EnableTraces ();
+//  lteHelper->EnableTraces ();
   // Uncomment to enable PCAP tracing
   //p2ph.EnablePcapAll("lena-epc-first");
 

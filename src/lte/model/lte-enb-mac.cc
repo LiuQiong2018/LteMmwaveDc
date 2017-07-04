@@ -604,16 +604,19 @@ LteEnbMac::DoReceiveLteControlMessage  (Ptr<LteControlMessage> msg)
   NS_LOG_FUNCTION (this << msg);
   if (msg->GetMessageType () == LteControlMessage::DL_CQI)
     {
+      NS_LOG_FUNCTION ("DL_CQI"); // woody for debugging
       Ptr<DlCqiLteControlMessage> dlcqi = DynamicCast<DlCqiLteControlMessage> (msg);
       ReceiveDlCqiLteControlMessage (dlcqi);
     }
   else if (msg->GetMessageType () == LteControlMessage::BSR)
     {
+      NS_LOG_FUNCTION ("DL_BSR"); // woody for debugging
       Ptr<BsrLteControlMessage> bsr = DynamicCast<BsrLteControlMessage> (msg);
       ReceiveBsrMessage (bsr->GetBsr ());
     }
   else if (msg->GetMessageType () == LteControlMessage::DL_HARQ)
     {
+      NS_LOG_FUNCTION ("DL_HARQ"); // woody for debugging
       Ptr<DlHarqFeedbackLteControlMessage> dlharq = DynamicCast<DlHarqFeedbackLteControlMessage> (msg);
       DoDlInfoListElementHarqFeeback (dlharq->GetDlHarqFeedback ());
     }

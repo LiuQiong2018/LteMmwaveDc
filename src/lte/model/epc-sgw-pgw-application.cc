@@ -27,7 +27,9 @@
 #include "ns3/inet-socket-address.h"
 #include "ns3/epc-gtpu-header.h"
 #include "ns3/abort.h"
-
+#include <fstream>
+#include "ns3/simulator.h"
+#include "Gtpu_SN_Header.h"
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("EpcSgwPgwApplication");
@@ -78,6 +80,20 @@ EpcSgwPgwApplication::UeInfo::SetEnbAddr (Ipv4Address enbAddr)
 {
   m_enbAddr = enbAddr;
 }
+
+
+Ipv4Address 
+EpcSgwPgwApplication::UeInfo::GetSenbAddr () // sychoi, woody inserted
+{
+  return m_senbAddr;
+}
+
+void
+EpcSgwPgwApplication::UeInfo::SetSenbAddr (Ipv4Address senbAddr) // sychoi, woody inserted
+{
+  m_senbAddr = senbAddr;
+}
+
 
 Ipv4Address 
 EpcSgwPgwApplication::UeInfo::GetUeAddr ()
@@ -134,6 +150,190 @@ EpcSgwPgwApplication::~EpcSgwPgwApplication ()
   NS_LOG_FUNCTION (this);
 }
 
+void
+EpcSgwPgwApplication::SetSplitAlgorithm (uint16_t splitAlgorithm) // woody
+{
+  m_splitAlgorithm = splitAlgorithm;
+}
+
+LteRrcSap::AssistInfo info1X[3];
+
+void
+EpcSgwPgwApplication::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT_MSG (m_isAssistInfoSink == true, "Not a assist info sink");
+
+  int nodeNum;
+  if (assistInfo.is_enb && assistInfo.is_menb) nodeNum = 0;
+  else if (assistInfo.is_enb) nodeNum = 1;
+  else nodeNum = 2;
+
+//NS_LOG_UNCOND("nodeNum " << nodeNum << " pdcp_sn " << assistInfo.pdcp_sn << " pdcp_delay " << assistInfo.pdcp_delay << " rlc_avg_buffer " << assistInfo.rlc_avg_buffer << " rlc_tx_queue " << assistInfo.rlc_tx_queue << " rlc_retx_queue " << assistInfo.rlc_retx_queue << " rlc_tx_queue_hol_delay " << assistInfo.rlc_tx_queue_hol_delay << " rlc_retx_queue_hol_delay " << assistInfo.rlc_retx_queue_hol_delay );
+  info1X[nodeNum] = assistInfo;
+
+  return;
+}
+//double pre_QueueSize=0;
+bool ToSenb=false, ToMenb=false;
+int p1,p2;
+
+std::ofstream OutFile_forEtha1X ("etha_At_1X.txt");
+void
+EpcSgwPgwApplication::UpdateEthas(){
+/// the split algorithm using RLC AM queuing delay
+	double delayAtMenb, delayAtSenb;//sjkang
+	delayAtMenb = info1X[0].rlc_tx_queue_hol_delay + info1X[0].rlc_retx_queue_hol_delay;
+	delayAtSenb = info1X[1].rlc_tx_queue_hol_delay + info1X[1].rlc_retx_queue_hol_delay;
+	double DelayDifferenceAtMenb = std::max (targetDelay -delayAtMenb,sigma);
+	double DelayDifferenceAtSenb =std::max (targetDelay -delayAtSenb,sigma);
+
+	etha_AtMenbFromDelay= DelayDifferenceAtMenb / (DelayDifferenceAtMenb+DelayDifferenceAtSenb);
+	etha_AtSenbFromDelay = DelayDifferenceAtSenb / (DelayDifferenceAtMenb+DelayDifferenceAtSenb);
+	pastEthaAtMenbFromDelay = (1-alpha)*pastEthaAtMenbFromDelay + alpha*etha_AtMenbFromDelay;
+	pastEthaAtSenbFromDelay = (1-alpha)*pastEthaAtSenbFromDelay +alpha* etha_AtSenbFromDelay;
+        //targetDelay = std::max(delayAtMenb, delayAtSenb);    
+        //targetDelay += targetDelay*0.2;
+	double ThroughputAtSenb = info1X[1].averageThroughput;
+        double ThroughputAtMenb = info1X[0].averageThroughput;
+	double targetThroughput_AtMenb = 10000000;
+	double targetThroughput_AtSenb = 9000000;
+	double theSumOfThroughputRatio = targetThroughput_AtMenb/ThroughputAtMenb +targetThroughput_AtSenb/ThroughputAtSenb;
+
+		 etha_AtMenbFrom_Thr_= (targetThroughput_AtMenb/ThroughputAtMenb)/theSumOfThroughputRatio;
+		etha_AtSenbFrom_Thr_=(targetThroughput_AtSenb/ThroughputAtSenb)/theSumOfThroughputRatio;
+
+
+	 double queueSizeAtMenb, queueSizeAtSenb;
+ 	 queueSizeAtMenb = info1X[0].rlc_retx_queue + info1X[0].rlc_tx_queue;
+ 	 queueSizeAtSenb = info1X[1].rlc_retx_queue +info1X[1].rlc_tx_queue;
+
+ 	double QueueDifferenceAtMenb = std::max (targetQueueSize - queueSizeAtMenb, sigma*1000);
+ 	double QueueDifferenceAtSenb = std::max (targetQueueSize - queueSizeAtSenb, sigma*1000);
+
+ 	etha_AtMenbFromQueueSize = QueueDifferenceAtMenb /(QueueDifferenceAtMenb+QueueDifferenceAtSenb);
+ 	etha_AtSenbFromQueueSize = QueueDifferenceAtSenb /(QueueDifferenceAtMenb+QueueDifferenceAtSenb);
+    pastEthaAtMenbFromQueueSize = (1-alpha)*pastEthaAtMenbFromQueueSize+alpha * etha_AtMenbFromQueueSize;
+    pastEthaAtSenbFromQueuesize = (1-alpha)*pastEthaAtSenbFromQueuesize+alpha* etha_AtSenbFromQueueSize;
+       targetQueueSize = std::max(queueSizeAtMenb, queueSizeAtSenb);
+	targetQueueSize += targetQueueSize*0.2;
+	//targetQueueSize = std::max(2.5*t_targetQueueSize - 1.5*pre_QueueSize,t_targetQueueSize+t_targetQueueSize*0.2); 
+        //pre_QueueSize = t_targetQueueSize; 
+    //  std::cout << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
+           /* if ( delayAtSenb - delayAtMenb > 1.0 && queueSizeAtMenb !=0 && queueSizeAtSenb!=0){
+            ToMenb=true;
+            ToSenb=false;
+                
+                      
+           }
+        else if(delayAtMenb - delayAtSenb >1.0 && queueSizeAtMenb !=0 && queueSizeAtSenb!=0 ){
+                ToMenb=false;
+                ToSenb=true;
+   
+                }
+        else*/ 
+	if ( info1X[0].rlc_retx_queue > 10000 ) {
+			ToSenb=true;
+			ToMenb= false;
+		}
+	else if (info1X[1].rlc_retx_queue >10000) {
+		ToMenb= true;        
+		ToSenb=false ; 
+		}
+       else{
+                ToSenb=false;
+                ToMenb=false;
+        }
+  	OutFile_forEtha1X << Simulator::Now().GetSeconds()<< "\t" << " Menb_etha_delay" << "\t" << pastEthaAtMenbFromDelay << "\t" << "Senb_etha_delay" <<"\t " 
+       <<pastEthaAtSenbFromDelay <<"\t"<<"Menb_etha_Queue" <<"\t" <<  pastEthaAtMenbFromQueueSize <<"\t  " << "Senb_etha_Queue" << "\t"<<
+                       pastEthaAtSenbFromQueuesize << std::endl;
+  		//	<< pastEthaAtSenbFromDelay << "\t" << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
+}
+int count_forSplitting_At_SgwPgw=0;
+int
+EpcSgwPgwApplication::SplitAlgorithm ()
+{
+  NS_LOG_FUNCTION (this);
+/*
+ 0: MeNB only
+ 1: SeNB only
+ 2: alternative splitting
+
+*/
+
+ int size =50;
+  // return 0 for Tx through MeNB &  return 1 for Tx through SeNB
+  switch (m_splitAlgorithm)
+  {
+    case 0:
+      return 0;
+      break;
+
+    case 1:
+      return 1;
+      break;
+
+    case 2:
+      if (m_lastDirection1X == 0) return 1;
+      else return 0;
+      break;
+    case 3:
+ 		if (count_forSplitting_At_SgwPgw > size*(pastEthaAtSenbFromDelay+pastEthaAtMenbFromDelay)){
+    	        	UpdateEthas();
+
+    	        	count_forSplitting_At_SgwPgw =0;
+    	        	 return 0;
+    	        }
+    	        else if (count_forSplitting_At_SgwPgw < pastEthaAtMenbFromDelay*size)
+    	        {
+
+    	        	count_forSplitting_At_SgwPgw++;
+    	        	return 0;
+
+    	        }
+    	        else if (count_forSplitting_At_SgwPgw >= pastEthaAtMenbFromDelay *size
+    	        		&& count_forSplitting_At_SgwPgw <= size*(pastEthaAtMenbFromDelay+pastEthaAtSenbFromDelay))
+    	        {
+    	          	count_forSplitting_At_SgwPgw++;
+    	        	return 1;
+    	        }
+    break;
+   case 4: 
+         
+   /*      if (ToSenb == true && ToMenb==false ) {
+                UpdateEthas();
+                return 1;
+                }
+        else if (ToMenb == true && ToSenb==false) {
+                UpdateEthas();
+                return 0;
+                }
+ 	 else*/ 
+	{		
+		if (count_forSplitting_At_SgwPgw > size*(pastEthaAtSenbFromQueuesize+pastEthaAtMenbFromQueueSize)){
+  	        	UpdateEthas();
+
+  	        	count_forSplitting_At_SgwPgw =0;
+  	        	 return 0;
+  	        }
+  	        else if (count_forSplitting_At_SgwPgw < pastEthaAtMenbFromQueueSize*size)
+  	        {
+
+  	        	count_forSplitting_At_SgwPgw++;
+  	        	return 0;
+
+  	        }
+  	        else if (count_forSplitting_At_SgwPgw >= pastEthaAtMenbFromQueueSize *size
+  	        		&& count_forSplitting_At_SgwPgw <= size*(pastEthaAtMenbFromQueueSize+pastEthaAtSenbFromQueuesize))
+  	        {
+  	          	count_forSplitting_At_SgwPgw++;
+  	        	return 1;
+  	        }
+	}
+  	        break;
+
+  }
+  return -1;
+}
 
 bool
 EpcSgwPgwApplication::RecvFromTunDevice (Ptr<Packet> packet, const Address& source, const Address& dest, uint16_t protocolNumber)
@@ -146,6 +346,12 @@ EpcSgwPgwApplication::RecvFromTunDevice (Ptr<Packet> packet, const Address& sour
   pCopy->RemoveHeader (ipv4Header);
   Ipv4Address ueAddr =  ipv4Header.GetDestination ();
   NS_LOG_LOGIC ("packet addressed to UE " << ueAddr);
+
+  // woody, for observing packet flow
+  NS_LOG_INFO ("***SgwPgw, " << Simulator::Now ().GetSeconds () << "s "
+              <<  packet->GetSize () << " bytes from "
+              << ipv4Header.GetSource () << " to " << ueAddr );
+
 
   // find corresponding UeInfo address
   std::map<Ipv4Address, Ptr<UeInfo> >::iterator it = m_ueInfoByAddrMap.find (ueAddr);
@@ -163,7 +369,52 @@ EpcSgwPgwApplication::RecvFromTunDevice (Ptr<Packet> packet, const Address& sour
         }
       else
         {
-          SendToS1uSocket (packet, enbAddr, teid);
+    	  /** sychoi, modified by woody
+    	   * Here, we need to implement the branch point for selecting the next eNB to steer DL packet.
+    	   * Using newly defined map, m_dcEnbAddrByTeidMap, find the SeNB address, senbAddr.
+    	   * Because of backward compatibility, m_dcEnbAddrByTeidMap is used only for DC packet routing.
+    	   * If there is no SeNB Address, then the packet is forwarded to MeNB.
+    	   * Otherwise, the packet is forwarded to SeNB.
+    	   */
+          if(it->second->dcType == 0 || it->second->dcType == 2){
+            NS_LOG_INFO ("***SgwPgw send to MeNB " << enbAddr << " with teid " << teid);
+            SendToS1uSocket (packet, enbAddr, teid);
+          }
+          else if(it->second->dcType == 1){
+            std::map<uint32_t, Ipv4Address>::iterator senbAddrIt = m_dcEnbAddrByTeidMap.find (teid);
+            if (senbAddrIt == m_dcEnbAddrByTeidMap.end ())
+            {
+              NS_LOG_INFO ("***SgwPgw send to MeNB " << enbAddr << " with teid " << teid);
+              SendToS1uSocket (packet, enbAddr, teid);
+            }
+            else
+            {
+              Ipv4Address senbAddr = senbAddrIt->second;
+              NS_LOG_INFO ("***SgwPgw send to SeNB " << senbAddr << " with teid " << teid);
+              SendToS1uSocket (packet, senbAddr, teid);
+            }
+          }
+          else if(it->second->dcType == 3){
+            int t_splitter = SplitAlgorithm();
+
+            std::map<uint32_t, Ipv4Address>::iterator senbAddrIt = m_dcEnbAddrByTeidMap.find (teid);
+            Ipv4Address senbAddr = senbAddrIt->second;
+            if (senbAddrIt == m_dcEnbAddrByTeidMap.end ()) NS_FATAL_ERROR("Cannot find senbAddr");
+
+            if (t_splitter == 1){
+              NS_LOG_INFO ("***SgwPgw send to SeNB " << senbAddr << " with teid " << teid);
+              m_lastDirection1X = 1;
+              SendToS1uSocket (packet, senbAddr, teid);
+            }
+            else if (t_splitter == 0) {
+              NS_LOG_INFO ("***SgwPgw send to MeNB " << enbAddr << " with teid " << teid);
+              m_lastDirection1X = 0;
+              SendToS1uSocket (packet, enbAddr, teid);
+            }
+            else NS_FATAL_ERROR ("unknwon t_splitter value");
+          }
+          else NS_FATAL_ERROR("Unimplemented DC type");
+
         }
     }
   // there is no reason why we should notify the TUN
@@ -203,6 +454,9 @@ EpcSgwPgwApplication::SendToS1uSocket (Ptr<Packet> packet, Ipv4Address enbAddr, 
   gtpu.SetTeid (teid);
   // From 3GPP TS 29.281 v10.0.0 Section 5.1
   // Length of the payload + the non obligatory GTP-U header
+  gtpu.SetSequenceNumber(gtpu_SN); //sjkang0601
+  gtpu_SN ++; //sjkang0601
+
   gtpu.SetLength (packet->GetSize () + gtpu.GetSerializedSize () - 8);  
   packet->AddHeader (gtpu);
   uint32_t flags = 0;
@@ -251,7 +505,7 @@ EpcSgwPgwApplication::SetUeAddress (uint64_t imsi, Ipv4Address ueAddr)
 }
 
 void 
-EpcSgwPgwApplication::DoCreateSessionRequest (EpcS11SapSgw::CreateSessionRequestMessage req)
+EpcSgwPgwApplication::DoCreateSessionRequest (EpcS11SapSgw::CreateSessionRequestMessage req) // woody, modified
 {
   NS_LOG_FUNCTION (this << req.imsi);
   std::map<uint64_t, Ptr<UeInfo> >::iterator ueit = m_ueInfoByImsiMap.find (req.imsi);
@@ -260,7 +514,7 @@ EpcSgwPgwApplication::DoCreateSessionRequest (EpcS11SapSgw::CreateSessionRequest
   std::map<uint16_t, EnbInfo>::iterator enbit = m_enbInfoByCellId.find (cellId);
   NS_ASSERT_MSG (enbit != m_enbInfoByCellId.end (), "unknown CellId " << cellId); 
   Ipv4Address enbAddr = enbit->second.enbAddr;
-  ueit->second->SetEnbAddr (enbAddr);
+  //ueit->second->SetEnbAddr (enbAddr);
 
   EpcS11SapMme::CreateSessionResponseMessage res;
   res.teid = req.imsi; // trick to avoid the need for allocating TEIDs on the S11 interface
@@ -275,13 +529,41 @@ EpcSgwPgwApplication::DoCreateSessionRequest (EpcS11SapSgw::CreateSessionRequest
       NS_ABORT_IF (m_teidCount == 0xFFFFFFFF);
       uint32_t teid = ++m_teidCount;  
       ueit->second->AddBearer (bit->tft, bit->epsBearerId, teid);
-
+      ueit->second->dcType = bit->dcType;
+      // if the bearer type is DC, add list eNB addr into SenbMap
+      if(bit->dcType == 0 || bit->dcType == 2) { // woody3C
+          NS_LOG_FUNCTION ("SetEnbAddr " << enbAddr << " dcType " << (unsigned)bit->dcType << " teid " << teid);
+          ueit->second->SetEnbAddr (enbAddr);
+      }
+      else if(bit->dcType == 1) {  // woody
+          NS_LOG_FUNCTION ("SetSenbAddr " << enbAddr << " dcType " << (unsigned)bit->dcType << " teid " << teid);
+          ueit->second->SetSenbAddr (enbAddr); // woody, actually SetSenbAddr is currently not utilized
+          m_dcEnbAddrByTeidMap[teid] = enbAddr;
+      }
+      else if(bit->dcType == 3) {  // woody1X
+          if (req.isSenb == 1)
+          {
+            NS_LOG_FUNCTION ("SetSenbAddr " << enbAddr << " dcType " << (unsigned)bit->dcType << " teid " << teid);
+            ueit->second->SetSenbAddr (enbAddr); // woody, actually SetSenbAddr is currently not utilized
+            m_dcEnbAddrByTeidMap[teid] = enbAddr;
+ 
+          }
+          else
+          {
+            NS_LOG_FUNCTION ("SetEnbAddr " << enbAddr << " dcType " << (unsigned)bit->dcType << " teid " << teid);
+            ueit->second->SetEnbAddr (enbAddr);
+          }
+      }
+      else {
+          NS_FATAL_ERROR("unimplemented DC type");
+      }
       EpcS11SapMme::BearerContextCreated bearerContext;
       bearerContext.sgwFteid.teid = teid;
       bearerContext.sgwFteid.address = enbit->second.sgwAddr;
       bearerContext.epsBearerId =  bit->epsBearerId; 
       bearerContext.bearerLevelQos = bit->bearerLevelQos; 
       bearerContext.tft = bit->tft;
+      bearerContext.dcType = bit->dcType; // woody
       res.bearerContextsCreated.push_back (bearerContext);
     }
   m_s11SapMme->CreateSessionResponse (res);
@@ -345,6 +627,12 @@ EpcSgwPgwApplication::DoDeleteBearerResponse (EpcS11SapSgw::DeleteBearerResponse
       //Function to remove de-activated bearer contexts from S-Gw and P-Gw side
       ueit->second->RemoveBearer (bit->epsBearerId);
     }
+}
+
+void
+EpcSgwPgwApplication::IsAssistInfoSink (){ // woody
+  NS_LOG_FUNCTION (this);
+  m_isAssistInfoSink = true;
 }
 
 }  // namespace ns3

@@ -84,6 +84,7 @@ public:
     uint8_t epsBearerId; 
     EpsBearer bearerLevelQos; 
     Ptr<EpcTft> tft;
+    uint8_t dcType; // woody
   };
 
 
@@ -163,6 +164,7 @@ public:
     uint8_t epsBearerId; 
     EpsBearer bearerLevelQos; 
     Ptr<EpcTft> tft;
+    uint8_t dcType; // woody
   };
 
   
@@ -173,7 +175,8 @@ public:
   {
     uint64_t imsi; 
     Uli uli; 
-    std::list<BearerContextToBeCreated> bearerContextsToBeCreated;    
+    std::list<BearerContextToBeCreated> bearerContextsToBeCreated;
+    uint8_t isSenb; // woody1X
   };
 
   /** 

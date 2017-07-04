@@ -40,6 +40,7 @@
 #include <ns3/lte-rrc-sap.h>
 #include <ns3/lte-anr-sap.h>
 #include <ns3/lte-ffr-rrc-sap.h>
+#include <ns3/epc-sgw-pgw-application.h> // woody
 
 #include <map>
 #include <set>
@@ -96,7 +97,7 @@ public:
    * 
    * \return 
    */
-  UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s);
+  UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s, bool enableAssistInfo); // woody
 
   virtual ~UeManager (void);
 
@@ -107,6 +108,16 @@ protected:
 public: 
   static TypeId GetTypeId (void);
 
+    double etha_AtMenbFromDelay, etha_AtSenbFromDelay; //sjkang
+    double etha_AtMenbFrom_Thr_,etha_AtSenbFrom_Thr_; //sjkang
+    double etha_AtMenbFromQueueSize,etha_AtSenbFromQueueSize; //sjkang
+    const double targetDelay = 0.01; //sjkang
+    double pastEthaAtMenbFromDelay, pastEthaAtSenbFromDelay;
+    double pastEthaAtMenbFromQueueSize, pastEthaAtSenbFromQueuesize;
+    void UpdateEthas(); //sjkang
+	 double sigma = 0.01; //sjkang
+	double alpha =1/99.0; //sjkang
+	double targetQueueSize = 89500.0; // sjkang
   /** 
    * Set the identifiers of the source eNB for the case where a UE
    * joins the current eNB as part of a handover procedure 
@@ -133,7 +144,7 @@ public:
    * \param transportLayerAddress  IP Address of the SGW, see 36.423 9.2.1
    * 
    */
-  void SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gtpTeid, Ipv4Address transportLayerAddress);
+  void SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gtpTeid, Ipv4Address transportLayerAddress, uint8_t dcType); // woody3C
 
   /** 
    * Start all configured data radio bearers. It is safe to call this
@@ -203,6 +214,8 @@ public:
    */
   void SendData (uint8_t bid, Ptr<Packet> p);
 
+  void SendData3C (uint8_t bid, Ptr<Packet> p); // woody3C
+
   /** 
    * 
    * \return a list of ERAB-to-be-setup items to be put in a X2 HO REQ message
@@ -264,6 +277,8 @@ public:
 
   void DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params);
 
+  void DoTransmitPdcpPduDc (LtePdcpSapUser::TransmitPdcpPduParametersDc params);
+
   /** 
    * 
    * \return the RNTI, i.e., an UE identifier that is unique within
@@ -317,7 +332,21 @@ public:
     (uint64_t imsi, uint16_t cellId, uint16_t rnti,
      State oldState, State newState);
 
+  void SetDcCell (uint16_t dcCell); // woody3C
+
+  LteRrcSap::AssistInfo m_assistInfo; // woody
+
+  void RecvAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
+
+  int SplitAlgorithm (); // woody
+
 private:
+
+  uint16_t m_dcCell; // woody3C
+  uint8_t m_currentBid; // woody3C
+  uint16_t m_splitAlgorithm; // woody
+  int m_lastDirection;
+  bool m_enableAssistInfo;
 
   /** 
    * Add a new LteDataRadioBearerInfo structure to the UeManager
@@ -327,6 +356,7 @@ private:
    * \return the id of the newly added data radio bearer structure
    */
   uint8_t AddDataRadioBearerInfo (Ptr<LteDataRadioBearerInfo> radioBearerInfo);
+  uint8_t AddDataRadioBearerInfoDc (Ptr<LteDataRadioBearerInfo> radioBearerInfo, uint8_t bearerId, uint8_t dcType); // woody
 
   /** 
    * \param drbid the Data Radio Bearer id
@@ -536,6 +566,19 @@ protected:
   virtual void DoDispose (void);
 public:
   static TypeId GetTypeId (void);
+
+  void SetMenb (); // woody
+
+  void SetAssistInfoSink (Ptr<LteEnbRrc> enbRrc, Ptr<EpcSgwPgwApplication> pgwApp, uint8_t dcType); // woody
+  void IsAssistInfoSink (); // woody
+
+  void SendAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
+  void RecvAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
+
+  LteRrcSap::AssistInfo* GetAssistInfoPtr (); // woody
+  void SetAssistInfoPtr (LteRrcSap::AssistInfo *assistInfo); // woody
+  LteRrcSap::AssistInfo *m_assistInfoPtr; // woody
+
 
 
   /**
@@ -867,6 +910,13 @@ public:
   
 private:
 
+  bool m_isMenb; // woody
+
+  Ptr<LteEnbRrc> m_assistInfoSinkEnb; // woody
+  Ptr<EpcSgwPgwApplication> m_assistInfoSinkPgw; // woody
+
+  bool m_isAssistInfoSink; // woody
+  bool m_enableAssistInfo; // woody
 
   // RRC SAP methods
 
@@ -994,7 +1044,11 @@ public:
    */
   void SetCsgId (uint32_t csgId, bool csgIndication);
 
+  void SetDcCell (uint16_t dcCell); // woody3C
+
 private:
+
+  uint16_t m_dcCell; // woody3C
 
   /** 
    * Allocate a new SRS configuration index for a new UE. 
@@ -1133,6 +1187,8 @@ private:
 
   //       TEID      RNTI, DRBID
   std::map<uint32_t, X2uTeidInfo> m_x2uTeidInfoMap;
+
+  std::map<uint32_t, X2uTeidInfo> m_x2uTeidInfoMapDc; // woody3C
 
   /**
    * The `DefaultTransmissionMode` attribute. The default UEs' transmission

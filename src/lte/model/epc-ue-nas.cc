@@ -131,6 +131,14 @@ EpcUeNas::SetAsSapProvider (LteAsSapProvider* s)
   m_asSapProvider = s;
 }
 
+void
+EpcUeNas::SetAsSapProviderDc (LteAsSapProvider* s) // woody
+{
+  NS_LOG_FUNCTION (this << s);
+  m_asSapProviderDc = s;
+}
+
+
 LteAsSapUser*
 EpcUeNas::GetAsSapUser ()
 {
@@ -171,6 +179,18 @@ EpcUeNas::Connect (uint16_t cellId, uint16_t dlEarfcn)
 
   // tell RRC to go into connected mode
   m_asSapProvider->Connect ();
+}
+
+void
+EpcUeNas::ConnectDc (uint16_t cellId, uint16_t dlEarfcn) // woody
+{
+  NS_LOG_FUNCTION (this << cellId << dlEarfcn);
+
+  // force the UE RRC to be camped on a specific eNB
+  m_asSapProviderDc->ForceCampedOnEnb (cellId, dlEarfcn);
+
+  // tell RRC to go into connected mode
+  m_asSapProviderDc->Connect ();
 }
 
 
@@ -221,6 +241,7 @@ EpcUeNas::Send (Ptr<Packet> packet)
         else
           {
             m_asSapProvider->SendData (packet, bid); 
+//            if (m_asSapProviderDc) m_asSapProviderDc->SendData (packet, bid); // woody, need to be checked
             return true;
           }
       }

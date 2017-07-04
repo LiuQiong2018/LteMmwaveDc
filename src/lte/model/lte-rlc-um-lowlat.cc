@@ -27,6 +27,10 @@
 #include "ns3/lte-rlc-sdu-status-tag.h"
 #include "ns3/lte-rlc-tag.h"
 
+#include "ns3/lte-rrc-sap.h" // woody
+#include "ns3/lte-enb-rrc.h" // woody
+#include "ns3/lte-ue-rrc.h" // woody 
+
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("LteRlcUmLowLat");
@@ -1248,6 +1252,42 @@ LteRlcUmLowLat::ExpireRbsTimer (void)
       DoReportBufferStatus ();
       m_rbsTimer = Simulator::Schedule (MilliSeconds (10), &LteRlcUmLowLat::ExpireRbsTimer, this);
     }
+}
+
+double
+LteRlcUmLowLat::GetBufferSize () // woody
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_UNCOND("Not implemented yet");
+  return 0;
+}
+
+void
+LteRlcUmLowLat::SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr) // woody
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_UNCOND("Not implemented yet");
+}
+
+void
+LteRlcUmLowLat::IsEnbRlc (void) // woody
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_UNCOND("Not implemented yet");
+}
+
+void
+LteRlcUmLowLat::SetRrc (Ptr<LteEnbRrc> enbRrc, Ptr<LteUeRrc> ueRrc) // woody
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_UNCOND("Not implemented yet");
+}
+
+void
+LteRlcUmLowLat::CalculatePathThroughput (std::ofstream *stream) // woody
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_UNCOND("Not implemented yet");
 }
 
 } // namespace ns3

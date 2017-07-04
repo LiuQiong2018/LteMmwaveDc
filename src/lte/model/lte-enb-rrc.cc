@@ -42,8 +42,8 @@
 #include <ns3/lte-pdcp.h>
 #include <ns3/lte-rlc-um-lowlat.h>
 
-
-
+#include <fstream>
+#include "Gtpu_SN_Header.h"
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("LteEnbRrc");
@@ -132,7 +132,7 @@ UeManager::UeManager ()
 }
 
 
-UeManager::UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s)
+UeManager::UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s, bool enableAssistInfo)
   : m_lastAllocatedDrbid (0),
     m_rnti (rnti),
     m_imsi (0),
@@ -145,6 +145,7 @@ UeManager::UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s)
     m_needPhyMacConfiguration (false)
 { 
   NS_LOG_FUNCTION (this);
+  m_enableAssistInfo = enableAssistInfo; // woody
 }
 
 void
@@ -202,6 +203,7 @@ UeManager::DoInitialize ()
     pdcp->SetLtePdcpSapUser (m_drbPdcpSapUser);
     pdcp->SetLteRlcSapProvider (rlc->GetLteRlcSapProvider ());
     rlc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser ());
+    pdcp->IsEnbPdcp(); // woody3C
 
     m_srb1 = CreateObject<LteSignalingRadioBearerInfo> ();
     m_srb1->m_rlc = rlc;
@@ -305,6 +307,10 @@ TypeId UeManager::GetTypeId (void)
                    UintegerValue (0), // unused, read-only attribute
                    MakeUintegerAccessor (&UeManager::m_rnti),
                    MakeUintegerChecker<uint16_t> ())
+    .AddAttribute ("SplitAlgorithm", "splitting algorithm for routing split bearer on dual connection", // woody
+                   UintegerValue (2),
+                   MakeUintegerAccessor (&UeManager::m_splitAlgorithm),
+                   MakeUintegerChecker<uint16_t> ())
     .AddTraceSource ("StateTransition",
                      "fired upon every UE state transition seen by the "
                      "UeManager at the eNB RRC",
@@ -328,12 +334,13 @@ UeManager::SetImsi (uint64_t imsi)
 }
 
 void
-UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gtpTeid, Ipv4Address transportLayerAddress)
+UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gtpTeid, Ipv4Address transportLayerAddress, uint8_t dcType)
 {
   NS_LOG_FUNCTION (this << (uint32_t) m_rnti);
 
   Ptr<LteDataRadioBearerInfo> drbInfo = CreateObject<LteDataRadioBearerInfo> ();
-  uint8_t drbid = AddDataRadioBearerInfo (drbInfo);
+  uint8_t drbid = AddDataRadioBearerInfoDc (drbInfo, bearerId, dcType); // woody, need to check bid allocation, woody3C
+  //uint8_t drbid = AddDataRadioBearerInfo (drbInfo);
   uint8_t lcid = Drbid2Lcid (drbid); 
   uint8_t bid = Drbid2Bid (drbid);
   NS_ASSERT_MSG ( bearerId == 0 || bid == bearerId, "bearer ID mismatch (" << (uint32_t) bid << " != " << (uint32_t) bearerId << ", the assumption that ID are allocated in the same way by MME and RRC is not valid any more");
@@ -342,6 +349,17 @@ UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gt
   drbInfo->m_logicalChannelIdentity = lcid;
   drbInfo->m_gtpTeid = gtpTeid;
   drbInfo->m_transportLayerAddress = transportLayerAddress;
+
+  drbInfo->m_dcType = dcType; // woody3C
+
+  if(dcType == 2){ // woody3C, need to add Senb condition
+    LteEnbRrc::X2uTeidInfo x2uTeidInfo;
+    x2uTeidInfo.rnti = m_rnti;
+    x2uTeidInfo.drbid = drbid;
+    std::pair<std::map<uint32_t, LteEnbRrc::X2uTeidInfo>::iterator, bool>
+    ret = m_rrc->m_x2uTeidInfoMapDc.insert (std::pair<uint32_t, LteEnbRrc::X2uTeidInfo> (gtpTeid, x2uTeidInfo));
+    NS_ASSERT_MSG (ret.second == true, "overwriting a pre-existing entry in m_x2uTeidInfoMapDc");
+  }
 
   if (m_state == HANDOVER_JOINING)
     {
@@ -377,6 +395,22 @@ UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gt
       pdcp->SetLteRlcSapProvider (rlc->GetLteRlcSapProvider ());
       rlc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser ());
       drbInfo->m_pdcp = pdcp;
+
+      if (m_enableAssistInfo)
+      {
+        // woody
+        m_assistInfo.bearerId = bearerId;
+        m_assistInfo.is_enb = true;
+
+        pdcp->IsEnbPdcp(); // woody3C
+        pdcp->m_enbRrc = m_rrc;
+        pdcp->SetAssistInfoPtr(&m_assistInfo);
+        rlc->IsEnbRlc();
+        rlc->SetRrc(m_rrc, 0);
+        rlc->SetAssistInfoPtr(&m_assistInfo);
+
+        m_rrc->SetAssistInfoPtr(&m_assistInfo);
+      }
     }
 
   LteEnbCmacSapProvider::LcInfo lcinfo;
@@ -640,6 +674,163 @@ UeManager::GetRrcConnectionReconfigurationForHandover ()
 }
 
 void
+UeManager::SendData3C (uint8_t bid, Ptr<Packet> p) // woody3C
+{
+  NS_LOG_FUNCTION (this << p << (uint16_t) bid);
+  NS_LOG_INFO ("**SeNB receives PDCP PDU through X2 interface");
+
+  uint8_t drbid = Bid2Drbid (bid);
+  Ptr<LteDataRadioBearerInfo> bearerInfo = GetDataRadioBearerInfo (drbid);
+  LteRlcSapProvider* rlcSapProvider = bearerInfo->m_rlc->GetLteRlcSapProvider ();
+  
+  LteRlcSapProvider::TransmitPdcpPduParameters params;
+  params.rnti = m_rnti;
+  params.lcid = Bid2Lcid (bid);
+  params.pdcpPdu = p;
+
+  rlcSapProvider->TransmitPdcpPdu (params);
+}
+
+LteRrcSap::AssistInfo info[3];
+
+void
+UeManager::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo) // woody
+{
+  NS_LOG_FUNCTION (this);
+
+  int nodeNum;
+  if (assistInfo.is_enb && assistInfo.is_menb) nodeNum = 0;
+  else if (assistInfo.is_enb) nodeNum = 1;
+  else nodeNum = 2;
+
+//NS_LOG_UNCOND("nodeNum " << nodeNum << " pdcp_sn " << assistInfo.pdcp_sn << " pdcp_delay " << assistInfo.pdcp_delay << " rlc_avg_buffer " << assistInfo.rlc_avg_buffer << " rlc_tx_queue " << assistInfo.rlc_tx_queue << " rlc_retx_queue " << assistInfo.rlc_retx_queue << " rlc_tx_queue_hol_delay " << assistInfo.rlc_tx_queue_hol_delay << " rlc_retx_queue_hol_delay " << assistInfo.rlc_retx_queue_hol_delay << " averageThroughput " << assistInfo.averageThroughput);
+  info[nodeNum] = assistInfo;
+
+  return;
+}
+
+std::ofstream OutFile_forEtha ("etha.txt");
+void
+UeManager::UpdateEthas(){
+	/// the split algorithm using RLC AM queuing delay
+	double delayAtMenb, delayAtSenb;//sjkang
+	delayAtMenb = info[0].rlc_tx_queue_hol_delay + info[0].rlc_retx_queue_hol_delay;
+	delayAtSenb = info[1].rlc_tx_queue_hol_delay + info[1].rlc_retx_queue_hol_delay;
+	double DelayDifferenceAtMenb = std::max (targetDelay -delayAtMenb,sigma);
+	double DelayDifferenceAtSenb =std::max (targetDelay -delayAtSenb,sigma);
+
+	etha_AtMenbFromDelay= DelayDifferenceAtMenb / (DelayDifferenceAtMenb+DelayDifferenceAtSenb);
+	etha_AtSenbFromDelay = DelayDifferenceAtSenb / (DelayDifferenceAtMenb+DelayDifferenceAtSenb);
+	pastEthaAtMenbFromDelay = (1-alpha)*pastEthaAtMenbFromDelay + alpha*etha_AtMenbFromDelay;
+	pastEthaAtSenbFromDelay = (1-alpha)*pastEthaAtSenbFromDelay +alpha* etha_AtSenbFromDelay;
+
+
+	double ThroughputAtMenb = info[0].averageThroughput;
+		double ThroughputAtSenb = info[1].averageThroughput;
+		double targetThroughput_AtMenb = 10000000;
+		double targetThroughput_AtSenb = 9000000;
+		double theSumOfThroughputRatio = targetThroughput_AtMenb/ThroughputAtMenb
+				+targetThroughput_AtSenb/ThroughputAtSenb;
+
+		 etha_AtMenbFrom_Thr_= (targetThroughput_AtMenb/ThroughputAtMenb)/theSumOfThroughputRatio;
+		etha_AtSenbFrom_Thr_=(targetThroughput_AtSenb/ThroughputAtSenb)/theSumOfThroughputRatio;
+
+
+		double queueSizeAtMenb, queueSizeAtSenb;
+ 	 queueSizeAtMenb = info[0].rlc_retx_queue + info[0].rlc_tx_queue;
+ 	 queueSizeAtSenb = info[1].rlc_retx_queue +info[1].rlc_tx_queue;
+ 	double QueueDifferenceAtMenb = std::max (targetQueueSize - queueSizeAtMenb, sigma*1000);
+ 	double QueueDifferenceAtSenb = std::max (targetQueueSize - queueSizeAtSenb, sigma*1000);
+
+ 	etha_AtMenbFromQueueSize = QueueDifferenceAtMenb /(QueueDifferenceAtMenb+QueueDifferenceAtSenb);
+ 	etha_AtSenbFromQueueSize = QueueDifferenceAtSenb /(QueueDifferenceAtMenb+QueueDifferenceAtSenb);
+    pastEthaAtMenbFromQueueSize = (1-alpha)*pastEthaAtMenbFromQueueSize+alpha * etha_AtMenbFromQueueSize;
+    pastEthaAtSenbFromQueuesize = (1-alpha)*pastEthaAtSenbFromQueuesize+alpha* etha_AtSenbFromQueueSize;
+    //  std::cout << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
+
+  	OutFile_forEtha << Simulator::Now().GetSeconds()<< "\t" << " Menb_etha_delay" << "\t" << pastEthaAtMenbFromDelay << "\t" << "Senb_etha_delay" <<"\t " 
+       <<pastEthaAtSenbFromDelay <<"\t"<<"Menb_etha_Queue" <<"\t" <<  pastEthaAtMenbFromQueueSize <<"\t  " << "Senb_etha_Queue" << "\t"<<
+                       pastEthaAtSenbFromQueuesize << std::endl;
+  		//	<< pastEthaAtSenbFromDelay << "\t" << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
+}
+
+int count_forSplitting=0;
+int
+UeManager::SplitAlgorithm () // woody
+{
+  NS_LOG_FUNCTION (this);
+/*
+ 0: MeNB only
+ 1: SeNB only
+ 2: alternative splitting
+
+*/
+
+  // return 0 for Tx through MeNB &  return 1 for Tx through SeNB
+  int size =30 ;  //sjkang0531
+  switch (m_splitAlgorithm)
+  {
+    case 0:
+      return 0;
+      break;
+
+    case 1:
+      return 1;
+      break;
+
+    case 2:
+      if (m_lastDirection == 0) return 1;
+      else return 0;
+      break;
+    case 3:  //delay model
+
+    	        if (count_forSplitting > size*(pastEthaAtSenbFromDelay+pastEthaAtMenbFromDelay)){
+    	        	UpdateEthas();
+
+    	        	count_forSplitting =0;
+    	        	 return 0;
+    	        }
+    	        else if (count_forSplitting < pastEthaAtMenbFromDelay*size)
+    	        {
+
+    	        	count_forSplitting++;
+    	        	return 0;
+
+    	        }
+    	        else if (count_forSplitting >= pastEthaAtMenbFromDelay *size
+    	        		&& count_forSplitting <= size*(pastEthaAtMenbFromDelay+pastEthaAtSenbFromDelay))
+    	        {
+    	          	count_forSplitting++;
+    	        	return 1;
+    	        }
+    	        break;
+    case 4:
+    if (count_forSplitting > size*(pastEthaAtSenbFromQueuesize+pastEthaAtMenbFromQueueSize)){
+  	        	UpdateEthas();
+
+  	        	count_forSplitting =0;
+  	        	 return 0;
+  	        }
+  	        else if (count_forSplitting < pastEthaAtMenbFromQueueSize*size)
+  	        {
+
+  	        	count_forSplitting++;
+  	        	return 0;
+
+  	        }
+  	        else if (count_forSplitting >= pastEthaAtMenbFromQueueSize *size
+  	        		&& count_forSplitting <= size*(pastEthaAtMenbFromQueueSize+pastEthaAtSenbFromQueuesize))
+  	        {
+  	          	count_forSplitting++;
+  	        	return 1;
+  	        }
+  	        break;
+
+  }
+  return -1;
+}
+
+void
 UeManager::SendData (uint8_t bid, Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this << p << (uint16_t) bid);
@@ -672,7 +863,32 @@ UeManager::SendData (uint8_t bid, Ptr<Packet> p)
             if (bearerInfo != NULL)
               {
                 LtePdcpSapProvider* pdcpSapProvider = bearerInfo->m_pdcp->GetLtePdcpSapProvider ();
-        pdcpSapProvider->TransmitPdcpSdu (params);
+		
+		Gtpu_SN_Header gtpu_SN_Header; //sjkang0601
+        if (bearerInfo->m_dcType == 0 || bearerInfo->m_dcType == 1){
+         p->RemoveHeader(gtpu_SN_Header); //sjkang0601
+	pdcpSapProvider->TransmitPdcpSdu (params); //sjkang0601
+	        }        
+	else if ( bearerInfo->m_dcType == 3){ // woody3C, woody1X
+		bearerInfo->m_pdcp->enable1X =true;  //sjkang0601
+          	pdcpSapProvider->TransmitPdcpSdu (params);
+	 	}
+        else if (bearerInfo->m_dcType == 2){
+          p->RemoveHeader(gtpu_SN_Header);  //sjkang0601
+	int t_splitter = SplitAlgorithm();
+	  if (t_splitter == 1){
+            NS_LOG_INFO("**MeNB forward packet toward SeNB");
+            m_lastDirection = 1;
+            m_currentBid = bid;
+            pdcpSapProvider->TransmitPdcpSduDc (params);
+          }
+          else if (t_splitter == 0) {
+            NS_LOG_INFO("**MeNB transmits packet directly");
+            m_lastDirection = 0;
+            pdcpSapProvider->TransmitPdcpSdu (params);
+          }
+          else NS_FATAL_ERROR ("unknwon t_splitter value");
+        }
       }
           }
       }
@@ -696,6 +912,38 @@ UeManager::SendData (uint8_t bid, Ptr<Packet> p)
       break;
     }
 }
+
+void
+UeManager::DoTransmitPdcpPduDc (LtePdcpSapUser::TransmitPdcpPduParametersDc params) // woody3C
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_LOGIC ("forwarding data to target eNB over X2-U for 3C");
+  uint8_t drbid = Bid2Drbid (m_currentBid);
+  EpcX2Sap::UeDataParams x2params;
+  x2params.sourceCellId = m_rrc->m_cellId;
+  x2params.targetCellId = m_dcCell;
+  x2params.gtpTeid = GetDataRadioBearerInfo (drbid)->m_gtpTeid;
+  x2params.ueData = params.pdcpPdu;
+  m_rrc->m_x2SapProvider->SendUeData (x2params);
+
+/*  if (params.lcid > 2)
+    {
+      // data radio bearer
+      EpsBearerTag tag;
+      tag.SetRnti (params.rnti);
+      tag.SetBid (Lcid2Bid (params.lcid));
+      params.pdcpSdu->AddPacketTag (tag);
+      m_rrc->m_forwardUpCallback (params.pdcpSdu);
+    }*/
+}
+
+void
+UeManager::SetDcCell (uint16_t dcCell){ // woody3C
+  NS_LOG_FUNCTION (this);
+  m_dcCell = dcCell;
+}
+
+
 
 std::vector<EpcX2Sap::ErabToBeSetupItem>
 UeManager::GetErabList ()
@@ -724,7 +972,7 @@ UeManager::SendUeContextRelease ()
   switch (m_state)
     {
     case HANDOVER_PATH_SWITCH:
-      NS_LOG_INFO ("Send UE CONTEXT RELEASE from target eNB to source eNB");
+      NS_LOG_LOGIC ("Send UE CONTEXT RELEASE from target eNB to source eNB");
       EpcX2SapProvider::UeContextReleaseParams ueCtxReleaseParams;
       ueCtxReleaseParams.oldEnbUeX2apId = m_sourceX2apId;
       ueCtxReleaseParams.newEnbUeX2apId = m_rnti;
@@ -748,7 +996,7 @@ UeManager::RecvHandoverPreparationFailure (uint16_t cellId)
     {
     case HANDOVER_PREPARATION:
       NS_ASSERT (cellId == m_targetCellId);
-      NS_LOG_INFO ("target eNB sent HO preparation failure, aborting HO");
+      NS_LOG_LOGIC ("target eNB sent HO preparation failure, aborting HO");
       SwitchToState (CONNECTED_NORMALLY);
       break;
 
@@ -828,7 +1076,7 @@ UeManager::RecvRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg)
           }
         else
           {
-            NS_LOG_INFO ("rejecting connection request for RNTI " << m_rnti);
+            NS_LOG_LOGIC ("rejecting connection request for RNTI " << m_rnti);
 
             // send RRC CONNECTION REJECT to UE
             LteRrcSap::RrcConnectionReject rejectMsg;
@@ -898,17 +1146,17 @@ UeManager::RecvRrcConnectionReconfigurationCompleted (LteRrcSap::RrcConnectionRe
 
     // This case is added to NS-3 in order to handle bearer de-activation scenario for CONNECTED state UE
     case CONNECTED_NORMALLY:
-      NS_LOG_INFO ("ignoring RecvRrcConnectionReconfigurationCompleted in state " << ToString (m_state));
+      NS_LOG_LOGIC ("ignoring RecvRrcConnectionReconfigurationCompleted in state " << ToString (m_state));
       break;
 
     case HANDOVER_LEAVING:
-      NS_LOG_INFO ("ignoring RecvRrcConnectionReconfigurationCompleted in state " << ToString (m_state));
+      NS_LOG_LOGIC ("ignoring RecvRrcConnectionReconfigurationCompleted in state " << ToString (m_state));
       break;
 
     case HANDOVER_JOINING:
       {
         m_handoverJoiningTimeout.Cancel ();
-        NS_LOG_INFO ("Send PATH SWITCH REQUEST to the MME");
+        NS_LOG_LOGIC ("Send PATH SWITCH REQUEST to the MME");
         EpcEnbS1SapProvider::PathSwitchRequestParameters params;
         params.rnti = m_rnti;
         params.cellId = m_rrc->m_cellId;
@@ -1128,6 +1376,37 @@ UeManager::AddDataRadioBearerInfo (Ptr<LteDataRadioBearerInfo> drbInfo)
   return 0;
 }
 
+uint8_t
+UeManager::AddDataRadioBearerInfoDc (Ptr<LteDataRadioBearerInfo> drbInfo, uint8_t bearerId, uint8_t dcType) // woody, woody3C
+{
+  NS_LOG_FUNCTION (this);
+
+  m_drbMap.insert (std::pair<uint8_t, Ptr<LteDataRadioBearerInfo> > (bearerId, drbInfo));
+  drbInfo->m_drbIdentity = bearerId;
+  drbInfo->m_dcType = dcType;
+  m_lastAllocatedDrbid = bearerId;
+  return bearerId;
+
+/*  const uint8_t MAX_DRB_ID = 32;
+  for (int drbid = (m_lastAllocatedDrbid + 1) % MAX_DRB_ID; 
+       drbid != m_lastAllocatedDrbid; 
+       drbid = (drbid + 1) % MAX_DRB_ID)
+    {
+      if (drbid != 0) // 0 is not allowed
+        {
+          if (m_drbMap.find (drbid) == m_drbMap.end ())
+            {
+              m_drbMap.insert (std::pair<uint8_t, Ptr<LteDataRadioBearerInfo> > (drbid, drbInfo));
+              drbInfo->m_drbIdentity = drbid;
+              m_lastAllocatedDrbid = drbid;
+              return drbid;
+            }
+        }
+    }
+  NS_FATAL_ERROR ("no more data radio bearer ids available");
+  return 0;*/
+}
+
 Ptr<LteDataRadioBearerInfo>
 UeManager::GetDataRadioBearerInfo (uint8_t drbid)
 {
@@ -1186,6 +1465,7 @@ UeManager::BuildRadioResourceConfigDedicated ()
       dtam.rlcConfig = it->second->m_rlcConfig;
       dtam.logicalChannelIdentity = it->second->m_logicalChannelIdentity;
       dtam.logicalChannelConfig = it->second->m_logicalChannelConfig;
+      dtam.dcType = it->second->m_dcType; // woody3C
       rrcd.drbToAddModList.push_back (dtam);
     }
 
@@ -1244,7 +1524,7 @@ UeManager::SwitchToState (State newState)
   NS_LOG_FUNCTION (this << ToString (newState));
   State oldState = m_state;
   m_state = newState;
-  NS_LOG_INFO (this << " IMSI " << m_imsi << " RNTI " << m_rnti << " UeManager "
+  NS_LOG_LOGIC (this << " IMSI " << m_imsi << " RNTI " << m_rnti << " UeManager "
                     << ToString (oldState) << " --> " << ToString (newState));
   m_stateTransitionTrace (m_imsi, m_rrc->m_cellId, m_rnti, oldState, newState);
 
@@ -1287,7 +1567,6 @@ UeManager::SwitchToState (State newState)
 // eNB RRC methods
 ///////////////////////////////////////////
 
-
 NS_OBJECT_ENSURE_REGISTERED (LteEnbRrc);
 
 LteEnbRrc::LteEnbRrc ()
@@ -1316,6 +1595,9 @@ LteEnbRrc::LteEnbRrc ()
   m_x2SapUser = new EpcX2SpecificEpcX2SapUser<LteEnbRrc> (this);
   m_s1SapUser = new MemberEpcEnbS1SapUser<LteEnbRrc> (this);
   m_cphySapUser = new MemberLteEnbCphySapUser<LteEnbRrc> (this);
+  m_isAssistInfoSink = false; // woody
+  m_isMenb = false; // woody
+  m_enableAssistInfo = false; // woody
 }
 
 
@@ -1365,7 +1647,7 @@ LteEnbRrc::GetTypeId (void)
                                     RLC_UM_ALWAYS, "RlcUmAlways",
                                     RLC_AM_ALWAYS, "RlcAmAlways",
                                     PER_BASED,     "PacketErrorRateBased",
-																		RLC_UM_LOWLAT_ALWAYS, "MmwRlcUmAlways"))
+                                    RLC_UM_LOWLAT_ALWAYS, "MmwRlcUmAlways"))
     .AddAttribute ("SystemInformationPeriodicity",
                    "The interval for sending system information (Time value)",
                    TimeValue (MilliSeconds (80)),
@@ -1942,7 +2224,8 @@ void
 LteEnbRrc::DoDataRadioBearerSetupRequest (EpcEnbS1SapUser::DataRadioBearerSetupRequestParameters request)
 {
   Ptr<UeManager> ueManager = GetUeManager (request.rnti);
-  ueManager->SetupDataRadioBearer (request.bearer, request.bearerId, request.gtpTeid, request.transportLayerAddress);
+  ueManager->SetDcCell (m_dcCell); // woody3C
+  ueManager->SetupDataRadioBearer (request.bearer, request.bearerId, request.gtpTeid, request.transportLayerAddress, request.dcType); // woody3C
 }
 
 void 
@@ -1968,7 +2251,7 @@ LteEnbRrc::DoRecvHandoverRequest (EpcX2SapUser::HandoverRequestParams req)
 
   if (m_admitHandoverRequest == false)
     {
-      NS_LOG_INFO ("rejecting handover request from cellId " << req.sourceCellId);
+      NS_LOG_LOGIC ("rejecting handover request from cellId " << req.sourceCellId);
       EpcX2Sap::HandoverPreparationFailureParams res;
       res.oldEnbUeX2apId =  req.oldEnbUeX2apId;
       res.sourceCellId = req.sourceCellId;
@@ -1983,7 +2266,7 @@ LteEnbRrc::DoRecvHandoverRequest (EpcX2SapUser::HandoverRequestParams req)
   LteEnbCmacSapProvider::AllocateNcRaPreambleReturnValue anrcrv = m_cmacSapProvider->AllocateNcRaPreamble (rnti);
   if (anrcrv.valid == false)
     {
-      NS_LOG_INFO (this << " failed to allocate a preamble for non-contention based RA => cannot accept HO");
+      NS_LOG_LOGIC (this << " failed to allocate a preamble for non-contention based RA => cannot accept HO");
       RemoveUe (rnti);
       NS_FATAL_ERROR ("should trigger HO Preparation Failure, but it is not implemented");
       return;
@@ -2003,7 +2286,7 @@ LteEnbRrc::DoRecvHandoverRequest (EpcX2SapUser::HandoverRequestParams req)
        it != req.bearers.end ();
        ++it)
     {
-      ueManager->SetupDataRadioBearer (it->erabLevelQosParameters, it->erabId, it->gtpTeid, it->transportLayerAddress);
+      ueManager->SetupDataRadioBearer (it->erabLevelQosParameters, it->erabId, it->gtpTeid, it->transportLayerAddress, 0); // woody3C, need to handle DC for handover
       EpcX2Sap::ErabAdmittedItem i;
       i.erabId = it->erabId;
       ackParams.admittedBearers.push_back (i);
@@ -2152,7 +2435,11 @@ LteEnbRrc::DoRecvUeData (EpcX2SapUser::UeDataParams params)
     }
   else
     {
-      NS_FATAL_ERROR ("X2-U data received but no X2uTeidInfo found");
+      teidInfoIt = m_x2uTeidInfoMapDc.find (params.gtpTeid);
+      if (teidInfoIt != m_x2uTeidInfoMapDc.end ()){
+        GetUeManager (teidInfoIt->second.rnti)->SendData3C (teidInfoIt->second.drbid, params.ueData);
+      }
+      else {NS_FATAL_ERROR ("X2-U data received but no X2uTeidInfo found");}
     }
 }
 
@@ -2283,7 +2570,7 @@ LteEnbRrc::AddUe (UeManager::State state)
 
   NS_ASSERT_MSG (found, "no more RNTIs available (do you have more than 65535 UEs in a cell?)");
   m_lastAllocatedRnti = rnti;
-  Ptr<UeManager> ueManager = CreateObject<UeManager> (this, rnti, state);
+  Ptr<UeManager> ueManager = CreateObject<UeManager> (this, rnti, state, m_enableAssistInfo); // woody
   m_ueMap.insert (std::pair<uint16_t, Ptr<UeManager> > (rnti, ueManager));
   ueManager->Initialize ();
   NS_LOG_DEBUG (this << " New UE RNTI " << rnti << " cellId " << m_cellId << " srs CI " << ueManager->GetSrsConfigurationIndex ());
@@ -2511,6 +2798,7 @@ LteEnbRrc::SendSystemInformation ()
    * For simplicity, we use the same periodicity for all SIBs. Note that in real
    * systems the periodicy of each SIBs could be different.
    */
+  NS_LOG_FUNCTION (this);
   LteRrcSap::SystemInformation si;
   si.haveSib2 = true;
   si.sib2.freqInfo.ulCarrierFreq = m_ulEarfcn;
@@ -2527,6 +2815,96 @@ LteEnbRrc::SendSystemInformation ()
 
   m_rrcSapUser->SendSystemInformation (si);
   Simulator::Schedule (m_systemInformationPeriodicity, &LteEnbRrc::SendSystemInformation, this);
+}
+
+void
+LteEnbRrc::SetDcCell (uint16_t dcCell){ // woody3C
+  NS_LOG_FUNCTION (this);
+  m_dcCell = dcCell;
+}
+
+void
+LteEnbRrc::SetAssistInfoSink (Ptr<LteEnbRrc> enbRrc, Ptr<EpcSgwPgwApplication> pgwApp, uint8_t dcType){ // woody
+  NS_LOG_FUNCTION (this);
+  m_enableAssistInfo = true;
+  if (dcType == 2){
+    m_assistInfoSinkEnb = enbRrc;
+  }
+  else if (dcType == 3){
+    m_assistInfoSinkPgw = pgwApp;
+  }
+ else  NS_FATAL_ERROR ("Unimplemented DC type " << dcType);  //sjkang0601
+}
+
+void
+LteEnbRrc::SetMenb (){ // woody
+  m_isMenb = true;
+}
+
+void
+LteEnbRrc::IsAssistInfoSink (){ // woody
+  NS_LOG_FUNCTION (this);
+  m_isAssistInfoSink = true;
+}
+
+void
+LteEnbRrc::SendAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
+  NS_LOG_FUNCTION (this);
+  static const Time delay = MilliSeconds (0);
+  if (m_assistInfoSinkEnb == NULL && m_assistInfoSinkPgw == NULL) NS_FATAL_ERROR ("cannot find AssistInfoSink");
+
+  if (m_isMenb) assistInfo.is_menb = true;
+  else assistInfo.is_menb = false;
+
+  if (m_assistInfoSinkEnb != 0) Simulator::Schedule (delay, &LteEnbRrc::RecvAssistInfo, m_assistInfoSinkEnb, assistInfo);
+  else Simulator::Schedule (delay, &EpcSgwPgwApplication::RecvAssistInfo, m_assistInfoSinkPgw, assistInfo);
+}
+
+void
+LteEnbRrc::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT_MSG (m_isAssistInfoSink == true, "Not a assist info sink");
+
+//NS_LOG_UNCOND(" check " <<(unsigned) assistInfo.bearerId);
+  std::map <uint32_t, X2uTeidInfo >::iterator itX2uTeidInfo;
+  for (itX2uTeidInfo = m_x2uTeidInfoMapDc.begin (); itX2uTeidInfo != m_x2uTeidInfoMapDc.end (); itX2uTeidInfo++)
+  {
+//NS_LOG_UNCOND((unsigned)itX2uTeidInfo->second.drbid);
+    if (itX2uTeidInfo->second.drbid == assistInfo.bearerId) break;
+  }
+
+  if (itX2uTeidInfo == m_x2uTeidInfoMapDc.end ()) return;
+//  NS_ASSERT_MSG (itX2uTeidInfo != m_x2uTeidInfoMapDc.end (), "Cannot find matching bearer");
+
+  std::map<uint16_t, Ptr<UeManager> >::iterator itUeManager = m_ueMap.find (itX2uTeidInfo->second.rnti);
+  NS_ASSERT_MSG (itUeManager != m_ueMap.end (), "Cannot find matching UE Manager");
+
+  itUeManager->second->RecvAssistInfo (assistInfo);
+}
+/*
+void
+LteEnbRrc::SetPfFfMacScheduler (Ptr<PfFfMacScheduler> pfFfMacScheduler) { // woody
+  m_pfFfMacScheduler = pfFfMacScheduler;
+}
+
+Ptr<PfFfMacScheduler>
+LteEnbRrc::GetPfFfMacScheduler () { // woody
+  return m_pfFfMacScheduler;
+}
+*/
+
+void
+LteEnbRrc::SetAssistInfoPtr (LteRrcSap::AssistInfo *assistInfo) // woody
+{
+  NS_LOG_FUNCTION (this);
+  m_assistInfoPtr = assistInfo;
+}
+
+LteRrcSap::AssistInfo*
+LteEnbRrc::GetAssistInfoPtr () // woody
+{
+  NS_LOG_FUNCTION (this);
+  return m_assistInfoPtr;
 }
 
 

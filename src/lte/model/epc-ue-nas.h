@@ -82,6 +82,7 @@ public:
    * \param s the AS SAP provider
    */
   void SetAsSapProvider (LteAsSapProvider* s);
+  void SetAsSapProviderDc (LteAsSapProvider* s); // woody
 
   /**
    *
@@ -122,6 +123,7 @@ public:
    * RRC to be camped on a specific eNB.
    */
   void Connect (uint16_t cellId, uint16_t dlEarfcn);
+  void ConnectDc (uint16_t cellId, uint16_t dlEarfcn); // woody
  
   /** 
    * instruct the NAS to disconnect
@@ -213,6 +215,7 @@ private:
   uint32_t m_csgId;
 
   LteAsSapProvider* m_asSapProvider;
+  LteAsSapProvider* m_asSapProviderDc; // woody
   LteAsSapUser* m_asSapUser;
 
   uint8_t m_bidCounter;

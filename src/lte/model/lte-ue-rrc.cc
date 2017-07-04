@@ -36,6 +36,8 @@
 
 #include <cmath>
 
+#include <fstream> // woody
+
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("LteUeRrc");
@@ -144,6 +146,8 @@ LteUeRrc::LteUeRrc ()
   m_rrcSapProvider = new MemberLteUeRrcSapProvider<LteUeRrc> (this);
   m_drbPdcpSapUser = new LtePdcpSpecificLtePdcpSapUser<LteUeRrc> (this);
   m_asSapProvider = new MemberLteAsSapProvider<LteUeRrc> (this);
+  m_isDc = false; // woody
+  objectCounter = 0; // woody
 }
 
 
@@ -259,6 +263,12 @@ LteUeRrc::GetTypeId (void)
   return tid;
 }
 
+void
+LteUeRrc::SetDc () // woody
+{
+  NS_LOG_FUNCTION (this);
+  m_isDc = true;
+}
 
 void
 LteUeRrc::SetLteUeCphySapProvider (LteUeCphySapProvider * s)
@@ -491,6 +501,11 @@ LteUeRrc::DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params)
   m_asSapUser->RecvData (params.pdcpSdu);
 }
 
+void
+LteUeRrc::DoTransmitPdcpPduDc (LtePdcpSapUser::TransmitPdcpPduParametersDc params) // woody3C
+{
+  NS_FATAL_ERROR ("unimplemented");
+}
 
 void
 LteUeRrc::DoSetTemporaryCellRnti (uint16_t rnti)
@@ -596,6 +611,7 @@ LteUeRrc::DoStartCellSelection (uint16_t dlEarfcn)
   NS_ASSERT_MSG (m_state == IDLE_START,
                  "cannot start cell selection from state " << ToString (m_state));
   m_dlEarfcn = dlEarfcn;
+//  std::cout<< dlEarfcn << std::endl; //sjkang
   m_cphySapProvider->StartCellSearch (dlEarfcn);
   SwitchToState (IDLE_CELL_SEARCH);
 }
@@ -604,7 +620,7 @@ void
 LteUeRrc::DoForceCampedOnEnb (uint16_t cellId, uint16_t dlEarfcn)
 {
   NS_LOG_FUNCTION (this << m_imsi << cellId << dlEarfcn);
-
+  //std::cout<< dlEarfcn << std::endl; //sjkang
   switch (m_state)
     {
     case IDLE_START:
@@ -1118,6 +1134,40 @@ LteUeRrc::EvaluateCellForSelection ()
 
 } // end of void LteUeRrc::EvaluateCellForSelection ()
 
+void
+LteUeRrc::SetRrcDc (Ptr<LteUeRrc> rrcDc){ // woody3C
+  NS_LOG_FUNCTION (this);
+  m_rrcDc = rrcDc;
+}
+
+void
+LteUeRrc::SetLteRlcSapUserDc (uint8_t i, LteRlcSapUser* p){ // woody3C
+  NS_LOG_FUNCTION (this);
+  m_bid2RlcSapUserMapDc[i] = p;
+}
+
+void
+LteUeRrc::SetAssistInfoSink (Ptr<LteEnbRrc> enbRrc, Ptr<EpcSgwPgwApplication> pgwApp, uint8_t dcType){ // woody
+  NS_LOG_FUNCTION (this);
+
+  if (dcType == 2){
+    m_assistInfoSinkEnb = enbRrc;
+  }
+  else if (dcType == 3){
+    m_assistInfoSinkPgw = pgwApp;
+  }
+  else NS_FATAL_ERROR ("Unimplemented DC type"); 
+}
+
+void
+LteUeRrc::SendAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
+  NS_LOG_FUNCTION (this);
+  static const Time delay = MilliSeconds (0);
+  if (m_assistInfoSinkEnb == NULL && m_assistInfoSinkPgw == NULL) return;
+
+  if (m_assistInfoSinkEnb != 0) Simulator::Schedule (delay, &LteEnbRrc::RecvAssistInfo, m_assistInfoSinkEnb, assistInfo);
+  else Simulator::Schedule (delay, &EpcSgwPgwApplication::RecvAssistInfo, m_assistInfoSinkPgw, assistInfo);
+}
 
 void 
 LteUeRrc::ApplyRadioResourceConfigDedicated (LteRrcSap::RadioResourceConfigDedicated rrcd)
@@ -1258,7 +1308,43 @@ LteUeRrc::ApplyRadioResourceConfigDedicated (LteRrcSap::RadioResourceConfigDedic
               pdcp->SetLcId (dtamIt->logicalChannelIdentity);
               pdcp->SetLtePdcpSapUser (m_drbPdcpSapUser);
               pdcp->SetLteRlcSapProvider (rlc->GetLteRlcSapProvider ());
-              rlc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser ());
+
+              // woody
+//NS_LOG_UNCOND(" Set signaling in UE: bearerId " << (uint32_t) dtamIt->drbIdentity  << " this " << this <<  " &m_assistInfo " << &m_assistInfo << " m_assistInfoSink " << m_assistInfoSink);
+              m_assistInfo.bearerId = dtamIt->drbIdentity;
+              m_assistInfo.is_enb = false;
+
+              pdcp->m_ueRrc = this;
+              pdcp->SetAssistInfoPtr(&m_assistInfo);
+              rlc->SetRrc(0, this);
+              rlc->SetAssistInfoPtr(&m_assistInfo);
+
+	      std::map<uint8_t, LteRlcSapUser*>::iterator itRlc = m_bid2RlcSapUserMapDc.find (drbInfo->m_drbIdentity);
+              if (itRlc == m_bid2RlcSapUserMapDc.end()){
+		if (m_rrcDc != NULL)
+		{
+			 m_rrcDc->SetLteRlcSapUserDc (drbInfo->m_drbIdentity, pdcp->GetLteRlcSapUser());
+		}
+		SetLteRlcSapUserDc (drbInfo->m_drbIdentity, pdcp->GetLteRlcSapUser());
+
+                rlc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser());
+                std::ofstream* streamPathThroughput = new std::ofstream("_0_path_throughput.txt");
+                if(drbInfo->m_drbIdentity == 2) rlc->CalculatePathThroughput(streamPathThroughput);
+              }
+              else{
+                rlc->SetLteRlcSapUser (itRlc->second);
+                std::ofstream* streamPathThroughput = new std::ofstream("_1_path_throughput.txt");
+                if(drbInfo->m_drbIdentity == 2) rlc->CalculatePathThroughput(streamPathThroughput);
+              }
+
+//	      if(m_rlcSapUserDc){
+//                rlc->SetLteRlcSapUser (m_rlcSapUserDc);
+//              }
+//              else{
+//NS_LOG_UNCOND("*drbInfo->m_drbIdentity " << (unsigned)drbInfo->m_drbIdentity);
+//                rlc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser ());
+//                m_rrcDc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser ());
+//              }
               drbInfo->m_pdcp = pdcp;
             }
 

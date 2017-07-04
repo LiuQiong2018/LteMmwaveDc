@@ -158,7 +158,6 @@ PointToPointEpcHelper::DoDispose ()
   m_sgwPgw->Dispose ();
 }
 
-
 void
 PointToPointEpcHelper::AddEnb (Ptr<Node> enb, Ptr<NetDevice> lteEnbNetDevice, uint16_t cellId)
 {
@@ -231,6 +230,81 @@ PointToPointEpcHelper::AddEnb (Ptr<Node> enb, Ptr<NetDevice> lteEnbNetDevice, ui
   NS_LOG_INFO ("connect S1-AP interface");
   m_mme->AddEnb (cellId, enbAddress, enbApp->GetS1apSapEnb ());
   m_sgwPgwApp->AddEnb (cellId, enbAddress, sgwAddress);
+  enbApp->SetS1apSapMme (m_mme->GetS1apSapMme ());
+}
+
+void
+PointToPointEpcHelper::AddSenb (Ptr<Node> enb, Ptr<NetDevice> lteEnbNetDevice, uint16_t cellId) // woody
+{
+  NS_LOG_FUNCTION (this << enb << lteEnbNetDevice << cellId);
+
+  NS_ASSERT (enb == lteEnbNetDevice->GetNode ());
+
+  // add an IPv4 stack to the previously created eNB
+  InternetStackHelper internet;
+  internet.Install (enb);
+  NS_LOG_LOGIC ("number of Ipv4 ifaces of the eNB after node creation: " << enb->GetObject<Ipv4> ()->GetNInterfaces ());
+
+  // create a point to point link between the new eNB and the SGW with
+  // the corresponding new NetDevices on each side  
+  NodeContainer enbSgwNodes;
+  enbSgwNodes.Add (m_sgwPgw);
+  enbSgwNodes.Add (enb);
+  PointToPointHelper p2ph;
+  p2ph.SetDeviceAttribute ("DataRate", DataRateValue (m_s1uLinkDataRate));
+  p2ph.SetDeviceAttribute ("Mtu", UintegerValue (m_s1uLinkMtu));
+  p2ph.SetChannelAttribute ("Delay", TimeValue (m_s1uLinkDelay));  
+  NetDeviceContainer enbSgwDevices = p2ph.Install (enb, m_sgwPgw);
+  NS_LOG_LOGIC ("number of Ipv4 ifaces of the eNB after installing p2p dev: " << enb->GetObject<Ipv4> ()->GetNInterfaces ());  
+  Ptr<NetDevice> enbDev = enbSgwDevices.Get (0);
+  Ptr<NetDevice> sgwDev = enbSgwDevices.Get (1);
+  m_s1uIpv4AddressHelper.NewNetwork ();
+  Ipv4InterfaceContainer enbSgwIpIfaces = m_s1uIpv4AddressHelper.Assign (enbSgwDevices);
+  NS_LOG_LOGIC ("number of Ipv4 ifaces of the eNB after assigning Ipv4 addr to S1 dev: " << enb->GetObject<Ipv4> ()->GetNInterfaces ());
+  
+  Ipv4Address enbAddress = enbSgwIpIfaces.GetAddress (0);
+  Ipv4Address sgwAddress = enbSgwIpIfaces.GetAddress (1);
+
+  // create S1-U socket for the ENB
+  Ptr<Socket> enbS1uSocket = Socket::CreateSocket (enb, TypeId::LookupByName ("ns3::UdpSocketFactory"));
+  int retval = enbS1uSocket->Bind (InetSocketAddress (enbAddress, m_gtpuUdpPort));
+  NS_ASSERT (retval == 0);
+  
+
+  // give PacketSocket powers to the eNB
+  //PacketSocketHelper packetSocket;
+  //packetSocket.Install (enb); 
+  
+  // create LTE socket for the ENB 
+  Ptr<Socket> enbLteSocket = Socket::CreateSocket (enb, TypeId::LookupByName ("ns3::PacketSocketFactory"));
+  PacketSocketAddress enbLteSocketBindAddress;
+  enbLteSocketBindAddress.SetSingleDevice (lteEnbNetDevice->GetIfIndex ());
+  enbLteSocketBindAddress.SetProtocol (Ipv4L3Protocol::PROT_NUMBER);
+  retval = enbLteSocket->Bind (enbLteSocketBindAddress);
+  NS_ASSERT (retval == 0);  
+  PacketSocketAddress enbLteSocketConnectAddress;
+  enbLteSocketConnectAddress.SetPhysicalAddress (Mac48Address::GetBroadcast ());
+  enbLteSocketConnectAddress.SetSingleDevice (lteEnbNetDevice->GetIfIndex ());
+  enbLteSocketConnectAddress.SetProtocol (Ipv4L3Protocol::PROT_NUMBER);
+  retval = enbLteSocket->Connect (enbLteSocketConnectAddress);
+  NS_ASSERT (retval == 0);  
+  
+
+  NS_LOG_INFO ("create EpcEnbApplication");
+  Ptr<EpcEnbApplication> enbApp = CreateObject<EpcEnbApplication> (enbLteSocket, enbS1uSocket, enbAddress, sgwAddress, cellId);
+  enb->AddApplication (enbApp);
+  NS_ASSERT (enb->GetNApplications () == 1);
+  NS_ASSERT_MSG (enb->GetApplication (0)->GetObject<EpcEnbApplication> () != 0, "cannot retrieve EpcEnbApplication");
+  NS_LOG_LOGIC ("enb: " << enb << ", enb->GetApplication (0): " << enb->GetApplication (0));
+
+  
+  NS_LOG_INFO ("Create EpcX2 entity");
+  Ptr<EpcX2> x2 = CreateObject<EpcX2> ();
+  enb->AggregateObject (x2);
+
+  NS_LOG_INFO ("connect S1-AP interface");
+  m_mme->AddSenb (cellId, enbAddress, enbApp->GetS1apSapEnb ()); // woody
+  m_sgwPgwApp->AddEnb (cellId, enbAddress, sgwAddress); // woody, need m_sgwPgwApp->AddSenb if necessary
   enbApp->SetS1apSapMme (m_mme->GetS1apSapMme ());
 }
 
@@ -319,11 +393,30 @@ PointToPointEpcHelper::ActivateEpsBearer (Ptr<NetDevice> ueDevice, uint64_t imsi
   return bearerId;
 }
 
+uint8_t
+PointToPointEpcHelper::ActivateEpsBearerDc (Ptr<NetDevice> ueDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer, uint8_t dcType) // woody, woody3C
+{
+  NS_LOG_FUNCTION (this << ueDevice << imsi);
+
+  uint8_t bearerId = m_mme->AddBearerDc (imsi, tft, bearer, dcType); // woody
+  Ptr<LteUeNetDevice> ueLteDevice = ueDevice->GetObject<LteUeNetDevice> ();
+  if (ueLteDevice)
+    {
+      ueLteDevice->GetNas ()->ActivateEpsBearer (bearer, tft);
+    }
+  return bearerId;
+}
 
 Ptr<Node>
 PointToPointEpcHelper::GetPgwNode ()
 {
   return m_sgwPgw;
+}
+
+Ptr<EpcMme>
+PointToPointEpcHelper::GetMme () // woody3C
+{
+  return m_mme;
 }
 
 

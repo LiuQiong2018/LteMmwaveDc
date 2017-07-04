@@ -26,6 +26,11 @@
 #include "ns3/lte-rlc-sdu-status-tag.h"
 #include "ns3/lte-rlc-tag.h"
 
+#include "ns3/lte-rrc-sap.h" // woody
+#include "ns3/lte-enb-rrc.h" // woody
+#include "ns3/lte-ue-rrc.h" // woody 
+#include "fstream" // woody
+
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("LteRlcUm");
@@ -44,6 +49,14 @@ LteRlcUm::LteRlcUm ()
 {
   NS_LOG_FUNCTION (this);
   m_reassemblingState = WAITING_S0_FULL;
+
+  // sjkang
+  averageBufferSize=0;
+  p=0;
+  sum=0;
+
+  m_isEnbRlc = false; // woody
+  m_assistInfoPtr = 0; // woody
 }
 
 LteRlcUm::~LteRlcUm ()
@@ -112,6 +125,8 @@ LteRlcUm::DoTransmitPdcpPdu (Ptr<Packet> p)
       NS_LOG_LOGIC ("txBufferSize    = " << m_txBufferSize);
       NS_LOG_LOGIC ("packet size     = " << p->GetSize ());
     }
+
+  GetBufferSize(); // sjkang
 
   /** Report Buffer Status */
   DoReportBufferStatus ();
@@ -375,6 +390,60 @@ LteRlcUm::DoNotifyTxOpportunity (uint32_t bytes, uint8_t layer, uint8_t harqId)
   packet->AddByteTag (rlcTag);
   m_txPdu (m_rnti, m_lcid, packet->GetSize ());
 
+/*
+  // FIRST SEGMENT
+  LteRlcSduStatusTag tag;
+  NS_ASSERT_MSG ((*it)->PeekPacketTag (tag), "LteRlcSduStatusTag is missing");
+  (*it)->PeekPacketTag (tag);
+  if ( (tag.GetStatus () == LteRlcSduStatusTag::FULL_SDU) ||
+        (tag.GetStatus () == LteRlcSduStatusTag::FIRST_SEGMENT) )
+    {
+      framingInfo |= LteRlcHeader::FIRST_BYTE;
+    }
+  else
+    {
+      framingInfo |= LteRlcHeader::NO_FIRST_BYTE;
+    }
+
+  while (it < dataField.end ())
+    {
+      NS_LOG_LOGIC ("Adding SDU/segment to packet, length = " << (*it)->GetSize ());
+
+      NS_ASSERT_MSG ((*it)->PeekPacketTag (tag), "LteRlcSduStatusTag is missing");
+      (*it)->RemovePacketTag (tag);
+      if (packet->GetSize () > 0)
+        {
+          packet->AddAtEnd (*it);
+        }
+      else
+        {
+          packet = (*it);
+        }
+      it++;
+    }
+
+  // LAST SEGMENT (Note: There could be only one and be the first one)
+  it--;
+  if ( (tag.GetStatus () == LteRlcSduStatusTag::FULL_SDU) ||
+        (tag.GetStatus () == LteRlcSduStatusTag::LAST_SEGMENT) )
+    {
+      framingInfo |= LteRlcHeader::LAST_BYTE;
+    }
+  else
+    {
+      framingInfo |= LteRlcHeader::NO_LAST_BYTE;
+    }
+
+  rlcHeader.SetFramingInfo (framingInfo);
+
+  NS_LOG_LOGIC ("RLC header: " << rlcHeader);
+  packet->AddHeader (rlcHeader);
+
+  // Sender timestamp
+  RlcTag rlcTag (Simulator::Now ());
+  packet->ReplacePacketTag (rlcTag);
+  m_txPdu (m_rnti, m_lcid, packet->GetSize ());
+*/
   // Send RLC PDU to MAC layer
   LteMacSapProvider::TransmitPduParameters params;
   params.pdu = packet;
@@ -402,15 +471,15 @@ void
 LteRlcUm::DoReceivePdu (Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this << m_rnti << (uint32_t) m_lcid << p->GetSize ());
-
   // Receiver timestamp
   RlcTag rlcTag;
   Time delay;
-  if (p->FindFirstMatchingByteTag (rlcTag))
-    {
-      delay = Simulator::Now() - rlcTag.GetSenderTimestamp ();
-    }
+  NS_ASSERT_MSG (p->PeekPacketTag (rlcTag), "RlcTag is missing");
+  p->RemovePacketTag (rlcTag);
+  delay = Simulator::Now() - rlcTag.GetSenderTimestamp ();
   m_rxPdu (m_rnti, m_lcid, p->GetSize (), delay.GetNanoSeconds ());
+
+  sumPacketSize += p->GetSize(); // woody
 
   // 5.1.2.2 Receive operations
 
@@ -1117,6 +1186,7 @@ LteRlcUm::DoReportBufferStatus (void)
   if (! m_txBuffer.empty ())
     {
       RlcTag holTimeTag;
+      NS_ASSERT_MSG (m_txBuffer.front ()->PeekPacketTag (holTimeTag), "RlcTag is missing");
       m_txBuffer.front ()->PeekPacketTag (holTimeTag);
       holDelay = Simulator::Now () - holTimeTag.GetSenderTimestamp ();
 
@@ -1131,6 +1201,8 @@ LteRlcUm::DoReportBufferStatus (void)
   r.retxQueueSize = 0;
   r.retxQueueHolDelay = 0;
   r.statusPduSize = 0;
+
+  GetReportBufferStatus(r); // sjkang
 
   NS_LOG_LOGIC ("Send ReportBufferStatus = " << r.txQueueSize << ", " << r.txQueueHolDelay );
   m_macSapProvider->ReportBufferStatus (r);
@@ -1186,6 +1258,125 @@ LteRlcUm::ExpireRbsTimer (void)
       DoReportBufferStatus ();
       m_rbsTimer = Simulator::Schedule (MilliSeconds (10), &LteRlcUm::ExpireRbsTimer, this);
     }
+}
+
+double
+LteRlcUm::GetBufferSize() // sjkang
+{
+  NS_LOG_FUNCTION(this);
+  Time delta_t=MilliSeconds(1.0);
+
+  SamplingTime = Simulator::Now();
+
+  //extracting the sample value per 1ms
+  if (Simulator::Now() >= SamplingTime +delta_t)
+  {
+    SamplingTime =Simulator::Now();
+
+    // the procedure untill moving window buffer is full
+    if (p <= 9)
+    {
+      ArrayInMovingWindow[p] =m_txBufferSize; //m_txonBufferSize +m_retxBufferSize+m_txedBufferSize;
+      sum += ArrayInMovingWindow[p];
+      averageBufferSize = sum/10.0;
+    }
+    //if the number of samples is equal to 10 , then get moving average value
+    else if (p >9)
+    {
+      // discard the last value in moving window buffer
+      int t= ArrayInMovingWindow[0];
+      //moving window
+      for (int j=1; j<10;j++){ ArrayInMovingWindow[j-1]=ArrayInMovingWindow[j];}
+      // update the new value and add to moving window buffer
+      ArrayInMovingWindow[9] = m_txBufferSize; // m_txonBufferSize + m_retxBufferSize +m_txedBufferSize;
+      //previous sum is updated for getting new moving average value
+      sum = sum-t+ArrayInMovingWindow[9];
+
+      averageBufferSize =(double)sum/10.0;
+
+//      if (enb1_Address ==this) OutFile5<<this << "\t"<< SamplingTime.GetSeconds() << "\t" << averageBufferSize << std::endl;
+//      else if(ue_Address==this) OutFile6<<this << "\t"<< SamplingTime.GetSeconds() << "\t" << averageBufferSize << std::endl;
+//      else if (enb2_Address == this) OutFile7<<this << "\t"<< SamplingTime.GetSeconds() << "\t" << averageBufferSize << std::endl;
+
+      // woody
+      if (m_assistInfoPtr){
+        m_assistInfoPtr->rlc_avg_buffer = averageBufferSize;
+        if (m_isEnbRlc){
+          m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
+        }
+        else{
+// woody, temporarily AssistInfo blocked
+//          m_ueRrc->SendAssistInfo (*m_assistInfoPtr);
+        }
+      }
+    }
+    p++;
+  }
+  return averageBufferSize;
+}
+
+void
+LteRlcUm::GetReportBufferStatus(LteMacSapProvider::ReportBufferStatusParameters r){
+  NS_LOG_FUNCTION(this);
+/*  if (cc==0)
+  {
+    OutFile6<<"Rlc Transmission Queue" << "\t"<< "Rlc retransmission Queue" << "\t"  <<"the Head Of Line delay of the transmission qu
+eue"<<"\t"<<" the Head Of Line delay of the retransmission queue"<<std::endl;
+    cc=1;
+  }
+
+  if (enb1_Address ==this) OutFile8<<this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 <
+< "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
+  else if(ue_Address==this) OutFile9<<this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0
+<< "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
+  else if (enb2_Address == this) OutFile10<<this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1
+000.0 << "\t"<<(double)r.retxQueueHolDelay/1000.0 << std::endl;*/
+
+  // woody
+  if (m_assistInfoPtr){
+    m_assistInfoPtr->rlc_tx_queue = r.txQueueSize;
+    m_assistInfoPtr->rlc_retx_queue = r.retxQueueSize;
+    m_assistInfoPtr->rlc_tx_queue_hol_delay = (double)r.txQueueHolDelay/1000.0;
+    m_assistInfoPtr->rlc_retx_queue_hol_delay = (double)r.retxQueueHolDelay/1000.0;
+    if (m_isEnbRlc){
+      m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
+    }
+    else{
+// woody, temporarily AssistInfo blocked
+//      m_ueRrc->SendAssistInfo (*m_assistInfoPtr);
+    }
+  }
+}
+
+void
+LteRlcUm::SetAssistInfoPtr(LteRrcSap::AssistInfo* assistInfoPtr) // woody
+{
+  NS_LOG_FUNCTION (this);
+  m_assistInfoPtr = assistInfoPtr;
+}
+
+void
+LteRlcUm:: IsEnbRlc () // woody
+{
+  m_isEnbRlc = true;
+}
+
+void
+LteRlcUm::SetRrc (Ptr<LteEnbRrc> enbRrc, Ptr<LteUeRrc> ueRrc) // woody
+{
+  NS_LOG_FUNCTION (this);
+  m_enbRrc = enbRrc;
+  m_ueRrc = ueRrc;
+}
+
+void
+LteRlcUm::CalculatePathThroughput (std::ofstream *stream) // woody
+{
+  Time now = Simulator::Now ();                                         /* Return the simulator's virtual time. */
+  double cur = (sumPacketSize - lastSumPacketSize) * (double) 8 / 1e5;     /* Convert Application RX Packets to MBits. */
+  *stream << now.GetSeconds () << "\t" << cur << std::endl;
+  lastSumPacketSize = sumPacketSize;
+  Simulator::Schedule (MilliSeconds (100), &LteRlcUm::CalculatePathThroughput, this, stream);
 }
 
 } // namespace ns3

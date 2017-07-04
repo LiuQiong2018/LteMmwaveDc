@@ -79,6 +79,7 @@ public:
    * \param cellId ID of the eNB
    */
   virtual void AddEnb (Ptr<Node> enbNode, Ptr<NetDevice> lteEnbNetDevice, uint16_t cellId) = 0;
+  virtual void AddSenb (Ptr<Node> enbNode, Ptr<NetDevice> lteEnbNetDevice, uint16_t cellId) = 0;
 
   /** 
    * Notify the EPC of the existance of a new UE which might attach at a later time
@@ -108,6 +109,7 @@ public:
    * \param bearer struct describing the characteristics of the EPS bearer to be activated
    */
   virtual uint8_t ActivateEpsBearer (Ptr<NetDevice> ueLteDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer) = 0;
+  virtual uint8_t ActivateEpsBearerDc (Ptr<NetDevice> ueLteDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer, uint8_t dcType) = 0; // woody, woody3C
 
 
   /** 
@@ -119,6 +121,7 @@ public:
    * interface of the PGW, i.e., to connect the PGW to the internet.
    */
   virtual Ptr<Node> GetPgwNode () = 0;
+  virtual Ptr<EpcMme> GetMme () = 0; // woody3C
 
   /** 
    * Assign IPv4 addresses to UE devices

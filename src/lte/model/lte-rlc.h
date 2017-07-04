@@ -33,6 +33,10 @@
 #include "ns3/lte-rlc-sap.h"
 #include "ns3/lte-mac-sap.h"
 
+#include "ns3/lte-rrc-sap.h" // woody
+#include "ns3/lte-enb-rrc.h" // woody
+#include "ns3/lte-ue-rrc.h" // woody 
+
 namespace ns3 {
 
 
@@ -126,6 +130,11 @@ public:
   /// \todo MRE What is the sense to duplicate all the interfaces here???
   // NB to avoid the use of multiple inheritance
   
+  virtual void SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr) = 0; // woody
+  virtual void IsEnbRlc () = 0; // woody
+  virtual void SetRrc (Ptr<LteEnbRrc> enbRrc, Ptr<LteUeRrc> ueRrc) = 0; // woody
+  virtual void CalculatePathThroughput (std::ofstream *streamPathThroughput) = 0; // woody
+
 protected:
   // Interface forwarded by LteRlcSapProvider
   virtual void DoTransmitPdcpPdu (Ptr<Packet> p) = 0;
@@ -138,6 +147,8 @@ protected:
   virtual void DoNotifyHarqDeliveryFailure () = 0;
   virtual void DoNotifyHarqDeliveryFailure (uint8_t harqId);
   virtual void DoReceivePdu (Ptr<Packet> p) = 0;
+
+  virtual double GetBufferSize() = 0; // sjkang
 
   LteMacSapUser* m_macSapUser;
   LteMacSapProvider* m_macSapProvider;
@@ -180,7 +191,11 @@ public:
   virtual void DoNotifyHarqDeliveryFailure ();
   virtual void DoReceivePdu (Ptr<Packet> p);
 
-
+  virtual double GetBufferSize (); // sjkang
+  virtual void SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr); // woody
+  virtual void IsEnbRlc (); // woody
+  virtual void SetRrc (Ptr<LteEnbRrc> enbRrc, Ptr<LteUeRrc> ueRrc); // woody
+  virtual void CalculatePathThroughput (std::ofstream *streamPathThroughput); // woody
 
 private:
   void ReportBufferStatus ();

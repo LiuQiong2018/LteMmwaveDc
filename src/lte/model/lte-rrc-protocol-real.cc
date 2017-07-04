@@ -349,6 +349,12 @@ LteUeRrcProtocolReal::DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters
     }
 }
 
+void
+LteUeRrcProtocolReal::DoTransmitPdcpPduDc (LtePdcpSapUser::TransmitPdcpPduParametersDc params) // woody3C
+{
+  NS_FATAL_ERROR("unimplemented");
+}
+ 
 NS_OBJECT_ENSURE_REGISTERED (LteEnbRrcProtocolReal);
 
 LteEnbRrcProtocolReal::LteEnbRrcProtocolReal ()
@@ -722,6 +728,12 @@ LteEnbRrcProtocolReal::DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameter
     }
 }
 
+void
+LteEnbRrcProtocolReal::DoTransmitPdcpPduDc (LtePdcpSapUser::TransmitPdcpPduParametersDc params) // woody3C
+{
+  NS_FATAL_ERROR("unimplemented function");
+}
+ 
 Ptr<Packet> 
 LteEnbRrcProtocolReal::DoEncodeHandoverPreparationInformation (LteRrcSap::HandoverPreparationInfo msg)
 {

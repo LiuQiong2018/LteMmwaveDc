@@ -85,7 +85,10 @@ public:
   virtual Ipv4InterfaceContainer AssignUeIpv4Address (NetDeviceContainer ueDevices);
   virtual Ipv4Address GetUeDefaultGatewayAddress ();
 
-
+  // woody
+  virtual void AddSenb (Ptr<Node> enbNode, Ptr<NetDevice> lteEnbNetDevice, uint16_t cellId);
+  virtual uint8_t ActivateEpsBearerDc (Ptr<NetDevice> ueLteDevice, uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer, uint8_t);
+  virtual Ptr<EpcMme> GetMme ();
 
 private:
 

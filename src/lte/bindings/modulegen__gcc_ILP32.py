@@ -402,6 +402,9 @@ def register_types(module):
     module.add_class('LtePdcpSapUser', allow_subclassing=True)
     ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::ReceivePdcpSduParameters [struct]
     module.add_class('ReceivePdcpSduParameters', outer_class=root_module['ns3::LtePdcpSapUser'])
+    ## woody3C
+    ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::TransmitPdcuPduParametersDc [struct]
+    module.add_class('TransmitPdcpPduParametersDc', outer_class=root_module['ns3::LtePdcpSapUser'])
     ## lte-rlc-sap.h (module 'lte'): ns3::LteRlcSapProvider [class]
     module.add_class('LteRlcSapProvider', allow_subclassing=True)
     ## lte-rlc-sap.h (module 'lte'): ns3::LteRlcSapProvider::TransmitPdcpPduParameters [struct]
@@ -1792,6 +1795,7 @@ def register_methods(root_module):
     register_Ns3LtePdcpSapProviderTransmitPdcpSduParameters_methods(root_module, root_module['ns3::LtePdcpSapProvider::TransmitPdcpSduParameters'])
     register_Ns3LtePdcpSapUser_methods(root_module, root_module['ns3::LtePdcpSapUser'])
     register_Ns3LtePdcpSapUserReceivePdcpSduParameters_methods(root_module, root_module['ns3::LtePdcpSapUser::ReceivePdcpSduParameters'])
+    register_Ns3LtePdcpSapUserTransmitPdcpPduParametersDc_methods(root_module, root_module['ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc'])
     register_Ns3LteRlcSapProvider_methods(root_module, root_module['ns3::LteRlcSapProvider'])
     register_Ns3LteRlcSapProviderTransmitPdcpPduParameters_methods(root_module, root_module['ns3::LteRlcSapProvider::TransmitPdcpPduParameters'])
     register_Ns3LteRlcSapUser_methods(root_module, root_module['ns3::LteRlcSapUser'])
@@ -6099,6 +6103,12 @@ def register_Ns3LtePdcpSapProvider_methods(root_module, cls):
                    'void', 
                    [param('ns3::LtePdcpSapProvider::TransmitPdcpSduParameters', 'params')], 
                    is_pure_virtual=True, is_virtual=True)
+    ## woody3C
+    ## lte-pdcp-sap.h (module 'lte'): void ns3::LtePdcpSapProvider::TransmitPdcpSduDc(ns3::LtePdcpSapProvider::TransmitPdcpSduParameters params) [member function]
+    cls.add_method('TransmitPdcpSduDc', 
+                   'void', 
+                   [param('ns3::LtePdcpSapProvider::TransmitPdcpSduParameters', 'params')], 
+                   is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3LtePdcpSapProviderTransmitPdcpSduParameters_methods(root_module, cls):
@@ -6124,6 +6134,12 @@ def register_Ns3LtePdcpSapUser_methods(root_module, cls):
                    'void', 
                    [param('ns3::LtePdcpSapUser::ReceivePdcpSduParameters', 'params')], 
                    is_pure_virtual=True, is_virtual=True)
+    ## woody3C
+    ## lte-pdcp-sap.h (module 'lte'): void ns3::LtePdcpSapUser::TransmitPdcpPduDc(ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc params) [member function]
+    cls.add_method('TransmitPdcpPduDc', 
+                   'void', 
+                   [param('ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc', 'params')], 
+                   is_pure_virtual=True, is_virtual=True)
     return
 
 def register_Ns3LtePdcpSapUserReceivePdcpSduParameters_methods(root_module, cls):
@@ -6136,6 +6152,19 @@ def register_Ns3LtePdcpSapUserReceivePdcpSduParameters_methods(root_module, cls)
     ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::ReceivePdcpSduParameters::pdcpSdu [variable]
     cls.add_instance_attribute('pdcpSdu', 'ns3::Ptr< ns3::Packet >', is_const=False)
     ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::ReceivePdcpSduParameters::rnti [variable]
+    cls.add_instance_attribute('rnti', 'uint16_t', is_const=False)
+    return
+
+def register_Ns3LtePdcpSapUserTransmitPdcpPduParametersDc_methods(root_module, cls): ## woody3C
+    ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc::TransmitPdcpPduParametersDc() [constructor]
+    cls.add_constructor([])
+    ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc::TransmitPdcpPduParametersDc(ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc const & arg0) [copy constructor]
+    cls.add_constructor([param('ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc const &', 'arg0')])
+    ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc::lcid [variable]
+    cls.add_instance_attribute('lcid', 'uint8_t', is_const=False)
+    ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc::pdcpSdu [variable]
+    cls.add_instance_attribute('pdcpPdu', 'ns3::Ptr< ns3::Packet >', is_const=False)
+    ## lte-pdcp-sap.h (module 'lte'): ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc::rnti [variable]
     cls.add_instance_attribute('rnti', 'uint16_t', is_const=False)
     return
 
@@ -11867,6 +11896,11 @@ def register_Ns3UeManager_methods(root_module, cls):
     cls.add_method('DoReceivePdcpSdu', 
                    'void', 
                    [param('ns3::LtePdcpSapUser::ReceivePdcpSduParameters', 'params')])
+    ## woody3C
+    ## lte-enb-rrc.h (module 'lte'): void ns3::UeManager::DoTransmitPdcpPduDc(ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc params) [member function]
+    cls.add_method('DoTransmitPdcpPduDc', 
+                   'void', 
+                   [param('ns3::LtePdcpSapUser::TransmitPdcpPduParametersDc', 'params')])
     ## lte-enb-rrc.h (module 'lte'): std::vector<ns3::EpcX2Sap::ErabToBeSetupItem, std::allocator<ns3::EpcX2Sap::ErabToBeSetupItem> > ns3::UeManager::GetErabList() [member function]
     cls.add_method('GetErabList', 
                    'std::vector< ns3::EpcX2Sap::ErabToBeSetupItem >', 
@@ -13237,8 +13271,20 @@ def register_Ns3EpcHelper_methods(root_module, cls):
                    'uint8_t', 
                    [param('ns3::Ptr< ns3::NetDevice >', 'ueLteDevice'), param('uint64_t', 'imsi'), param('ns3::Ptr< ns3::EpcTft >', 'tft'), param('ns3::EpsBearer', 'bearer')], 
                    is_pure_virtual=True, is_virtual=True)
+    ## woody
+    ## epc-helper.h (module 'lte'): uint8_t ns3::EpcHelper::ActivateEpsBearerDc(ns3::Ptr<ns3::NetDevice> ueLteDevice, uint64_t imsi, ns3::Ptr<ns3::EpcTft> tft, ns3::EpsBearer bearer) [member function]
+    cls.add_method('ActivateEpsBearerDc', 
+                   'uint8_t', 
+                   [param('ns3::Ptr< ns3::NetDevice >', 'ueLteDevice'), param('uint64_t', 'imsi'), param('ns3::Ptr< ns3::EpcTft >', 'tft'), param('ns3::EpsBearer', 'bearer')], 
+                   is_pure_virtual=True, is_virtual=True)
     ## epc-helper.h (module 'lte'): void ns3::EpcHelper::AddEnb(ns3::Ptr<ns3::Node> enbNode, ns3::Ptr<ns3::NetDevice> lteEnbNetDevice, uint16_t cellId) [member function]
     cls.add_method('AddEnb', 
+                   'void', 
+                   [param('ns3::Ptr< ns3::Node >', 'enbNode'), param('ns3::Ptr< ns3::NetDevice >', 'lteEnbNetDevice'), param('uint16_t', 'cellId')], 
+                   is_pure_virtual=True, is_virtual=True)
+    ## woody
+    ## epc-helper.h (module 'lte'): void ns3::EpcHelper::AddSenb(ns3::Ptr<ns3::Node> enbNode, ns3::Ptr<ns3::NetDevice> lteEnbNetDevice, uint16_t cellId) [member function]
+    cls.add_method('AddSenb', 
                    'void', 
                    [param('ns3::Ptr< ns3::Node >', 'enbNode'), param('ns3::Ptr< ns3::NetDevice >', 'lteEnbNetDevice'), param('uint16_t', 'cellId')], 
                    is_pure_virtual=True, is_virtual=True)
@@ -16540,8 +16586,18 @@ def register_Ns3LteHelper_methods(root_module, cls):
     cls.add_method('InstallEnbDevice', 
                    'ns3::NetDeviceContainer', 
                    [param('ns3::NodeContainer', 'c')])
+    ## woody
+    ## lte-helper.h (module 'lte'): ns3::NetDeviceContainer ns3::LteHelper::InstallSenbDevice(ns3::NodeContainer c) [member function]
+    cls.add_method('InstallSenbDevice', 
+                   'ns3::NetDeviceContainer', 
+                   [param('ns3::NodeContainer', 'c')])
     ## lte-helper.h (module 'lte'): ns3::NetDeviceContainer ns3::LteHelper::InstallUeDevice(ns3::NodeContainer c) [member function]
     cls.add_method('InstallUeDevice', 
+                   'ns3::NetDeviceContainer', 
+                   [param('ns3::NodeContainer', 'c')])
+    ## woody
+    ## lte-helper.h (module 'lte'): ns3::NetDeviceContainer ns3::LteHelper::InstallDcUeDevice(ns3::NodeContainer c) [member function]
+    cls.add_method('InstallDcUeDevice', 
                    'ns3::NetDeviceContainer', 
                    [param('ns3::NodeContainer', 'c')])
     ## lte-helper.h (module 'lte'): void ns3::LteHelper::SetEnbAntennaModelAttribute(std::string n, ns3::AttributeValue const & v) [member function]
@@ -16753,6 +16809,12 @@ def register_Ns3LtePdcp_methods(root_module, cls):
                    visibility='protected', is_virtual=True)
     ## lte-pdcp.h (module 'lte'): void ns3::LtePdcp::DoTransmitPdcpSdu(ns3::Ptr<ns3::Packet> p) [member function]
     cls.add_method('DoTransmitPdcpSdu', 
+                   'void', 
+                   [param('ns3::Ptr< ns3::Packet >', 'p')], 
+                   visibility='protected', is_virtual=True)
+    ## woody3C
+    ## lte-pdcp.h (module 'lte'): void ns3::LtePdcp::DoTransmitPdcpSduDc(ns3::Ptr<ns3::Packet> p) [member function]
+    cls.add_method('DoTransmitPdcpSduDc', 
                    'void', 
                    [param('ns3::Ptr< ns3::Packet >', 'p')], 
                    visibility='protected', is_virtual=True)
@@ -19048,8 +19110,20 @@ def register_Ns3PointToPointEpcHelper_methods(root_module, cls):
                    'uint8_t', 
                    [param('ns3::Ptr< ns3::NetDevice >', 'ueLteDevice'), param('uint64_t', 'imsi'), param('ns3::Ptr< ns3::EpcTft >', 'tft'), param('ns3::EpsBearer', 'bearer')], 
                    is_virtual=True)
+    ## woody
+    ## point-to-point-epc-helper.h (module 'lte'): uint8_t ns3::PointToPointEpcHelper::ActivateEpsBearerDc(ns3::Ptr<ns3::NetDevice> ueLteDevice, uint64_t imsi, ns3::Ptr<ns3::EpcTft> tft, ns3::EpsBearer bearer) [member function]
+    cls.add_method('ActivateEpsBearerDc', 
+                   'uint8_t', 
+                   [param('ns3::Ptr< ns3::NetDevice >', 'ueLteDevice'), param('uint64_t', 'imsi'), param('ns3::Ptr< ns3::EpcTft >', 'tft'), param('ns3::EpsBearer', 'bearer')], 
+                   is_virtual=True)
     ## point-to-point-epc-helper.h (module 'lte'): void ns3::PointToPointEpcHelper::AddEnb(ns3::Ptr<ns3::Node> enbNode, ns3::Ptr<ns3::NetDevice> lteEnbNetDevice, uint16_t cellId) [member function]
     cls.add_method('AddEnb', 
+                   'void', 
+                   [param('ns3::Ptr< ns3::Node >', 'enbNode'), param('ns3::Ptr< ns3::NetDevice >', 'lteEnbNetDevice'), param('uint16_t', 'cellId')], 
+                   is_virtual=True)
+    ## woody
+    ## point-to-point-epc-helper.h (module 'lte'): void ns3::PointToPointEpcHelper::AddSenb(ns3::Ptr<ns3::Node> enbNode, ns3::Ptr<ns3::NetDevice> lteEnbNetDevice, uint16_t cellId) [member function]
+    cls.add_method('AddSenb', 
                    'void', 
                    [param('ns3::Ptr< ns3::Node >', 'enbNode'), param('ns3::Ptr< ns3::NetDevice >', 'lteEnbNetDevice'), param('uint16_t', 'cellId')], 
                    is_virtual=True)
@@ -20764,8 +20838,20 @@ def register_Ns3EmuEpcHelper_methods(root_module, cls):
                    'uint8_t', 
                    [param('ns3::Ptr< ns3::NetDevice >', 'ueLteDevice'), param('uint64_t', 'imsi'), param('ns3::Ptr< ns3::EpcTft >', 'tft'), param('ns3::EpsBearer', 'bearer')], 
                    is_virtual=True)
+    ## woody
+    ## emu-epc-helper.h (module 'lte'): uint8_t ns3::EmuEpcHelper::ActivateEpsBearerDc(ns3::Ptr<ns3::NetDevice> ueLteDevice, uint64_t imsi, ns3::Ptr<ns3::EpcTft> tft, ns3::EpsBearer bearer) [member function]
+    cls.add_method('ActivateEpsBearerDc', 
+                   'uint8_t', 
+                   [param('ns3::Ptr< ns3::NetDevice >', 'ueLteDevice'), param('uint64_t', 'imsi'), param('ns3::Ptr< ns3::EpcTft >', 'tft'), param('ns3::EpsBearer', 'bearer')], 
+                   is_virtual=True)
     ## emu-epc-helper.h (module 'lte'): void ns3::EmuEpcHelper::AddEnb(ns3::Ptr<ns3::Node> enbNode, ns3::Ptr<ns3::NetDevice> lteEnbNetDevice, uint16_t cellId) [member function]
     cls.add_method('AddEnb', 
+                   'void', 
+                   [param('ns3::Ptr< ns3::Node >', 'enbNode'), param('ns3::Ptr< ns3::NetDevice >', 'lteEnbNetDevice'), param('uint16_t', 'cellId')], 
+                   is_virtual=True)
+    ## woody
+    ## emu-epc-helper.h (module 'lte'): void ns3::EmuEpcHelper::AddSenb(ns3::Ptr<ns3::Node> enbNode, ns3::Ptr<ns3::NetDevice> lteEnbNetDevice, uint16_t cellId) [member function]
+    cls.add_method('AddSenb', 
                    'void', 
                    [param('ns3::Ptr< ns3::Node >', 'enbNode'), param('ns3::Ptr< ns3::NetDevice >', 'lteEnbNetDevice'), param('uint16_t', 'cellId')], 
                    is_virtual=True)

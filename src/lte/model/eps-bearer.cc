@@ -105,6 +105,8 @@ EpsBearer::GetPriority () const
       return 8;
     case GBR_ULTRA_LOW_LAT:
       return 1;
+    case NGBR_VIDEO_TCP_DEFAULT:
+      return 9;
     default:
       NS_FATAL_ERROR ("unknown QCI value " << qci);
       return 0;

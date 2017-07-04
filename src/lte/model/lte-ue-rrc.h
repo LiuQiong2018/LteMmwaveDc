@@ -30,6 +30,7 @@
 #include <ns3/lte-ue-cphy-sap.h>
 #include <ns3/lte-rrc-sap.h>
 #include <ns3/traced-callback.h>
+#include <ns3/lte-enb-rrc.h> // woody
 
 #include <map>
 #include <set>
@@ -291,12 +292,30 @@ public:
     (uint64_t imsi, uint16_t cellId, uint16_t rnti,
      State oldState, State newState);
 
+  void SetRrcDc (Ptr<LteUeRrc> rrcDc); // woody3C
+  void SetLteRlcSapUserDc (uint8_t drbIdentity, LteRlcSapUser* p); // woody3C
+  void SetAssistInfoSink (Ptr<LteEnbRrc> enbRrc, Ptr<EpcSgwPgwApplication> pgwApp, uint8_t dcType); // woody
+  void SendAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
+  LteRrcSap::AssistInfo m_assistInfo; // woody
+
+  void SetDc (); // woody
 
 private:
 
+  bool m_isDc; // woody
+
+  Ptr<LteUeRrc> m_rrcDc; // woody3C
+  LteRlcSapUser* m_rlcSapUserDc; // woody3C
+
+  std::map<uint8_t, LteRlcSapUser*> m_bid2RlcSapUserMapDc; // woody3C
+
+  Ptr<LteEnbRrc> m_assistInfoSinkEnb; // woody
+  Ptr<EpcSgwPgwApplication> m_assistInfoSinkPgw; // woody
+  uint8_t objectCounter; // woody
 
   // PDCP SAP methods
   void DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params);
+  void DoTransmitPdcpPduDc (LtePdcpSapUser::TransmitPdcpPduParametersDc params); // woody3C
 
   // CMAC SAP methods
   void DoSetTemporaryCellRnti (uint16_t rnti);

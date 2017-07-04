@@ -14,7 +14,7 @@ my @simTime = (5, 10);
 
 
 # Configure and complite first the program to avoid counting compilation time as running time
-my $launch = "CXXFLAGS=\"-O3 -w\" ./waf -d optimized configure --enable-static --enable-examples --enable-modules=lte"
+my $launch = "CXXFLAGS=\"-O3 -w\" ./waf -d optimized configure --enable-static --enable-examples --enable-modules=lte";
 my $out, my $err;
 capture { system($launch ) } \$out, \$err;
 $launch = "./waf --run \'lena-profiling --simTime=0.1 --nUe=1 --nEnb=1 --nFloors=0\'";

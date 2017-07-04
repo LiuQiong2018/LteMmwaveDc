@@ -55,6 +55,7 @@ public:
    * \param params 
    */
   virtual void TransmitPdcpSdu (TransmitPdcpSduParameters params) = 0;
+  virtual void TransmitPdcpSduDc (TransmitPdcpSduParameters params) = 0; // woody3C
 };
 
 
@@ -86,6 +87,14 @@ public:
   * \param params
   */
   virtual void ReceivePdcpSdu (ReceivePdcpSduParameters params) = 0;
+
+  struct TransmitPdcpPduParametersDc // woody3C
+  {
+    Ptr<Packet> pdcpPdu;
+    uint16_t rnti;
+    uint8_t lcid;
+  };
+  virtual void TransmitPdcpPduDc (TransmitPdcpPduParametersDc params) = 0; // woody3C
 };
 
 ///////////////////////////////////////
@@ -98,6 +107,7 @@ public:
 
   // Interface implemented from LtePdcpSapProvider
   virtual void TransmitPdcpSdu (TransmitPdcpSduParameters params);
+  virtual void TransmitPdcpSduDc (TransmitPdcpSduParameters params); // woody3C
 
 private:
   LtePdcpSpecificLtePdcpSapProvider ();
@@ -121,6 +131,12 @@ void LtePdcpSpecificLtePdcpSapProvider<C>::TransmitPdcpSdu (TransmitPdcpSduParam
   m_pdcp->DoTransmitPdcpSdu (params.pdcpSdu);
 }
 
+template <class C>
+void LtePdcpSpecificLtePdcpSapProvider<C>::TransmitPdcpSduDc (TransmitPdcpSduParameters params) // woody3C
+{
+  m_pdcp->DoTransmitPdcpSduDc (params.pdcpSdu);
+}
+
 ///////////////////////////////////////
 
 template <class C>
@@ -131,6 +147,7 @@ public:
 
   // Interface implemented from LtePdcpSapUser
   virtual void ReceivePdcpSdu (ReceivePdcpSduParameters params);
+  virtual void TransmitPdcpPduDc (TransmitPdcpPduParametersDc params); // woody3C
 
 private:
   LtePdcpSpecificLtePdcpSapUser ();
@@ -152,6 +169,12 @@ template <class C>
 void LtePdcpSpecificLtePdcpSapUser<C>::ReceivePdcpSdu (ReceivePdcpSduParameters params)
 {
   m_rrc->DoReceivePdcpSdu (params);
+}
+
+template <class C>
+void LtePdcpSpecificLtePdcpSapUser<C>::TransmitPdcpPduDc (TransmitPdcpPduParametersDc params) // woody3C
+{
+  m_rrc->DoTransmitPdcpPduDc (params);
 }
 
 

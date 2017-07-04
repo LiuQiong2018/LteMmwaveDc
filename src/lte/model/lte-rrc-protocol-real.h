@@ -81,6 +81,7 @@ private:
   void SetEnbRrcSapProvider ();
   void DoReceivePdcpPdu (Ptr<Packet> p);
   void DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params);
+  void DoTransmitPdcpPduDc (LtePdcpSapUser::TransmitPdcpPduParametersDc params); // woody3C
 
   Ptr<LteUeRrc> m_rrc;
   uint16_t m_rnti;
@@ -143,6 +144,7 @@ private:
 
   void DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params);
   void DoReceivePdcpPdu (uint16_t rnti, Ptr<Packet> p);
+  void DoTransmitPdcpPduDc (LtePdcpSapUser::TransmitPdcpPduParametersDc params); // woody3C
 
   uint16_t m_rnti;
   uint16_t m_cellId;

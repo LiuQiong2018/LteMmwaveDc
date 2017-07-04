@@ -171,16 +171,21 @@ void PacketSink::HandleRead (Ptr<Socket> socket)
       m_totalRx += packet->GetSize ();
       if (InetSocketAddress::IsMatchingType (from))
         {
-          NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
-                       << "s packet sink received "
+          NS_LOG_INFO ("*UE, " << Simulator::Now ().GetSeconds () << "s "// woody, logging
                        <<  packet->GetSize () << " bytes from "
                        << InetSocketAddress::ConvertFrom(from).GetIpv4 ()
                        << " port " << InetSocketAddress::ConvertFrom (from).GetPort ()
                        << " total Rx " << m_totalRx << " bytes");
+/*          NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
+                       << "s packet sink received "
+                       <<  packet->GetSize () << " bytes from "
+                       << InetSocketAddress::ConvertFrom(from).GetIpv4 ()
+                       << " port " << InetSocketAddress::ConvertFrom (from).GetPort ()
+                       << " total Rx " << m_totalRx << " bytes");*/
         }
       else if (Inet6SocketAddress::IsMatchingType (from))
         {
-          NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
+          NS_LOG_LOGIC ("At time " << Simulator::Now ().GetSeconds ()
                        << "s packet sink received "
                        <<  packet->GetSize () << " bytes from "
                        << Inet6SocketAddress::ConvertFrom(from).GetIpv6 ()

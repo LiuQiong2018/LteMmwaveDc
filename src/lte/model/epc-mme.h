@@ -88,6 +88,9 @@ public:
    * \param enbS1apSap the ENB side of the S1-AP SAP 
    */
   void AddEnb (uint16_t ecgi, Ipv4Address enbS1UAddr, EpcS1apSapEnb* enbS1apSap);
+  void AddSenb (uint16_t ecgi, Ipv4Address enbS1UAddr, EpcS1apSapEnb* enbS1apSap); // woody
+
+  void SetMenbSenbMap (uint16_t menbId, uint16_t senbId); // woody3C
   
   /** 
    * Add a new UE to the MME. This is the equivalent of storing the UE
@@ -107,6 +110,7 @@ public:
    * \param bearer QoS characteristics of the bearer
    */
   uint8_t AddBearer (uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer);
+  uint8_t AddBearerDc (uint64_t imsi, Ptr<EpcTft> tft, EpsBearer bearer, uint8_t dcType); // woody
 
 
 private:
@@ -132,8 +136,13 @@ private:
     Ptr<EpcTft> tft;
     EpsBearer bearer;
     uint8_t bearerId;
+
+    uint8_t dcType; // woody, {SC = 0, DC_1A = 1, DC_3C = 2, DC_1Z = 3}
   };
   
+  std::map<uint8_t, uint8_t> m_MenbSenbMap; // woody3C
+  std::map<uint8_t, uint8_t> m_SenbMenbMap;
+
   /**
    * Hold info on a UE
    * 
@@ -144,7 +153,9 @@ private:
     uint16_t enbUeS1Id;
     uint64_t imsi;
     uint16_t cellId;
+    uint16_t cellIdDc; // woody
     std::list<BearerInfo> bearersToBeActivated;
+    std::list<BearerInfo> bearersToBeActivatedDc; // woody
     uint16_t bearerCounter;
   };
 
@@ -170,6 +181,7 @@ private:
     uint16_t gci;
     Ipv4Address s1uAddr;
     EpcS1apSapEnb* s1apSapEnb;
+    uint8_t enbType; // woody, 0=SC, 1=DC
   };
 
   /**
