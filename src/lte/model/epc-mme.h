@@ -157,6 +157,9 @@ private:
     std::list<BearerInfo> bearersToBeActivated;
     std::list<BearerInfo> bearersToBeActivatedDc; // woody
     uint16_t bearerCounter;
+
+    EpcS11SapSgw::CreateSessionRequestMessage msgSenb; // woody
+    bool m_isMsgSenbExist; // woody
   };
 
   /**

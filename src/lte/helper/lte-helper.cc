@@ -1763,4 +1763,16 @@ LteHelper::GetPdcpStats (void)
   return m_pdcpStats;
 }
 
+Ptr<SpectrumChannel>
+LteHelper::GetDlChannel (void) // woody
+{
+  return m_downlinkChannel;
+}
+
+Ptr<SpectrumChannel>
+LteHelper::GetUlChannel (void) // woody
+{
+  return m_uplinkChannel;
+}
+
 } // namespace ns3

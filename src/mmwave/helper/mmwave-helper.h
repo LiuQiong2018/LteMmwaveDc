@@ -84,7 +84,9 @@ public:
 	virtual void DoDispose (void);
 
 	NetDeviceContainer InstallUeDevice (NodeContainer c);
+	NetDeviceContainer InstallDcUeDevice (NodeContainer c); // woody
 	NetDeviceContainer InstallEnbDevice (NodeContainer c);
+	NetDeviceContainer InstallSenbDevice (NodeContainer c, uint16_t cellId); // woody
 	void SetAntenna (uint16_t Nrx, uint16_t Ntx);
 	void SetPathlossModelType (std::string type);
 	void SetChannelModelType (std::string type);
@@ -107,12 +109,24 @@ public:
 	bool GetSnrTest ();
 	Ptr<PropagationLossModel> GetPathLossModel (void);
 
+	void SetLteChannel (Ptr<SpectrumChannel> dlChannel, Ptr<SpectrumChannel> ulChannel); // woody
+	void AttachDc (Ptr<NetDevice> ueDevice, Ptr<NetDevice> enbDevice, Ptr<EpcTft> tftDc, uint8_t dcType); // woody
+	void NotifyEnbNeighbor (Ptr<Node> enb, Ptr<Node> senb); // woody
+	void AddX2Interface (Ptr<Node> enbNode1, Ptr<Node> enbNode2); // woody
+
 protected:
 	virtual void DoInitialize();
 
 private:
+	// woody
+	Ptr<SpectrumChannel> m_downlinkChannelLte;
+	Ptr<SpectrumChannel> m_uplinkChannelLte;
+	bool m_usePdschForCqiGeneration;
+
 	Ptr<NetDevice> InstallSingleUeDevice (Ptr<Node> n);
+	Ptr<NetDevice> InstallSingleDcUeDevice (Ptr<Node> n); // woody
 	Ptr<NetDevice> InstallSingleEnbDevice (Ptr<Node> n);
+	Ptr<NetDevice> InstallSingleSenbDevice (Ptr<Node> n, uint16_t cellId); // woody
 	void AttachToClosestEnb (Ptr<NetDevice> ueDevice, NetDeviceContainer enbDevices);
 	void EnableDlPhyTrace ();
 	void EnableUlPhyTrace ();
@@ -137,6 +151,7 @@ private:
 
 	ObjectFactory m_enbNetDeviceFactory;
 	ObjectFactory m_ueNetDeviceFactory;
+	ObjectFactory m_ueNetDeviceFactoryLte; // woody
 	ObjectFactory m_channelFactory;
 	ObjectFactory m_pathlossModelFactory;
 	ObjectFactory m_schedulerFactory;

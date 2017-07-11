@@ -141,9 +141,9 @@ double
 MmWave3gppPropagationLossModel::GetLoss (Ptr<MobilityModel> a, Ptr<MobilityModel> b) const
 {
 	Ptr<MobilityModel> ueMob, enbMob;
-	if(DynamicCast<MmWaveUeNetDevice> (a->GetObject<Node> ()->GetDevice (0)) !=0)
+	if(DynamicCast<MmWaveUeNetDevice> (a->GetObject<Node> ()->GetDeviceMmWave ()) !=0) // woody
 	{
-		if(DynamicCast<MmWaveUeNetDevice> (b->GetObject<Node> ()->GetDevice (0)) !=0)
+		if(DynamicCast<MmWaveUeNetDevice> (b->GetObject<Node> ()->GetDeviceMmWave ()) !=0) // woody
 		{
 			NS_LOG_INFO("UE->UE Link, skip Pathloss computation");
 			return 0;
@@ -156,7 +156,7 @@ MmWave3gppPropagationLossModel::GetLoss (Ptr<MobilityModel> a, Ptr<MobilityModel
 	}
 	else
 	{
-		if(DynamicCast<MmWaveUeNetDevice> (b->GetObject<Node> ()->GetDevice (0)) !=0)
+		if(DynamicCast<MmWaveUeNetDevice> (b->GetObject<Node> ()->GetDeviceMmWave ()) !=0) // woody
 		{
 			ueMob = b;
 			enbMob = a;

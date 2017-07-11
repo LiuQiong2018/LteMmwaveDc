@@ -288,7 +288,7 @@ MmWave3gppBuildingsPropagationLossModel::GetLoss (Ptr<MobilityModel> a, Ptr<Mobi
 	if (Now().GetSeconds() - m_prevTime.GetSeconds()<0.00009)
 	{
 		Vector ueLoc, enbLoc;
-		if(DynamicCast<MmWaveUeNetDevice> (a->GetObject<Node> ()->GetDevice (0)) !=0)
+		if(DynamicCast<MmWaveUeNetDevice> (a->GetObject<Node> ()->GetDeviceMmWave ()) !=0) // woody
 		{
 			/*if(DynamicCast<MmWaveEnbNetDevice> (b->GetObject<Node> ()->GetDevice (0)) !=0)
 			{
@@ -301,7 +301,7 @@ MmWave3gppBuildingsPropagationLossModel::GetLoss (Ptr<MobilityModel> a, Ptr<Mobi
 		}
 		else
 		{
-			if(DynamicCast<MmWaveUeNetDevice> (b->GetObject<Node> ()->GetDevice (0)) !=0)
+			if(DynamicCast<MmWaveUeNetDevice> (b->GetObject<Node> ()->GetDeviceMmWave ()) !=0) // woody
 			{
 				NS_LOG_INFO("ENB->UE Link");
 				enbLoc = a->GetPosition();

@@ -30,6 +30,8 @@
 #include "ns3/lte-phy.h"
 #include "ns3/eps-bearer.h"
 
+// woody
+#include <ns3/mmwave-ue-net-device.h>
 
 namespace ns3 {
 
@@ -123,7 +125,10 @@ public:
    */
   Ptr<LteEnbNetDevice> GetTargetEnb (void);
 
-  void SetDc (); // woody
+  // woody
+  void SetDc ();
+  void SetMmWaveUeNetDeviceDc (Ptr<MmWaveUeNetDevice> dev);
+  Ptr<MmWaveUeNetDevice> GetMmWaveUeNetDeviceDc (void);
 
 protected:
   // inherited from Object
@@ -131,6 +136,8 @@ protected:
 
 
 private:
+  Ptr<MmWaveUeNetDevice> m_mmWaveUeNetDeviceDc; // woody
+
   bool m_isConstructed;
 
   /**

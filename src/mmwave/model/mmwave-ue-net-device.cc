@@ -91,11 +91,26 @@ MmWaveUeNetDevice::GetTypeId (void)
 					   MakeUintegerAccessor (&MmWaveUeNetDevice::SetAntennaNum,
 											 &MmWaveUeNetDevice::GetAntennaNum),
 					   MakeUintegerChecker<uint8_t> ())
-		.AddAttribute ("LteUeRrc",
+/*		.AddAttribute ("LteUeRrc",
 						"The RRC layer associated with the ENB",
 						PointerValue (),
 						MakePointerAccessor (&MmWaveUeNetDevice::m_rrc),
-						MakePointerChecker <LteUeRrc> ())
+						MakePointerChecker <LteUeRrc> ())*/
+		.AddAttribute ("LteUeRrc", // woody
+				"The RRC associated to this UeNetDevice",
+				PointerValue (),
+				MakePointerAccessor (&MmWaveUeNetDevice::m_rrcLte),
+				MakePointerChecker <LteUeRrc> ())
+		.AddAttribute ("LteUeMac", // woody
+				"The MAC associated to this UeNetDevice",
+				PointerValue (),
+				MakePointerAccessor (&MmWaveUeNetDevice::m_macLte),
+				MakePointerChecker <LteUeMac> ())
+		.AddAttribute ("LteUePhy", // woody
+				"The PHY associated to this UeNetDevice",
+				PointerValue (),
+				MakePointerAccessor (&MmWaveUeNetDevice::m_phyLte),
+				MakePointerChecker <LteUePhy> ())
 	;
 	return tid;
 }
@@ -105,11 +120,18 @@ MmWaveUeNetDevice::MmWaveUeNetDevice (void)
 
 {
 	NS_LOG_FUNCTION (this);
+	m_isDc = false; // woody
 }
 
 MmWaveUeNetDevice::~MmWaveUeNetDevice (void)
 {
 
+}
+
+void
+MmWaveUeNetDevice::SetDc (void) // woody
+{
+	m_isDc = true;
 }
 
 void
@@ -120,7 +142,14 @@ MmWaveUeNetDevice::DoInitialize (void)
 	m_phy->DoInitialize ();
 	m_rrc->Initialize ();
 
+	if (m_isDc)
+	{
+		m_phyLte->Initialize (); // woody
+		m_macLte->Initialize ();
+		m_rrcLte->Initialize ();
+	}
 }
+
 void
 MmWaveUeNetDevice::DoDispose ()
 {

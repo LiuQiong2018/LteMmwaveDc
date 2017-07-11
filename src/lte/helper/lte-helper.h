@@ -597,6 +597,10 @@ public:
   */
   int64_t AssignStreams (NetDeviceContainer c, int64_t stream);
 
+  // woody
+  Ptr<SpectrumChannel> GetDlChannel (void);
+  Ptr<SpectrumChannel> GetUlChannel (void);
+
 protected:
   // inherited from Object
   virtual void DoInitialize (void);

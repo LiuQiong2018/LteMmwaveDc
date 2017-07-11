@@ -41,6 +41,10 @@
 #include <ns3/lte-ue-rrc.h>
 #include <ns3/epc-ue-nas.h>
 
+// woody
+#include <ns3/lte-ue-phy.h>
+#include <ns3/lte-ue-mac.h>
+
 namespace ns3{
 
 class Packet;
@@ -90,11 +94,19 @@ public:
 
     uint8_t GetAntennaNum () const;
 
+    void SetDc (); // woody
+
 protected:
   // inherited from Object
   virtual void DoInitialize (void);
 
 private:
+
+  // woody
+  bool m_isDc;
+  Ptr<LteUeMac> m_macLte;
+  Ptr<LteUePhy> m_phyLte;
+  Ptr<LteUeRrc> m_rrcLte;
 
   Ptr<MmWaveEnbNetDevice> m_targetEnb;
   Ptr<MmWaveUePhy> m_phy;

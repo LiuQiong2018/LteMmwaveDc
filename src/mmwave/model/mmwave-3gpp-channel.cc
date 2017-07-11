@@ -329,13 +329,12 @@ MmWave3gppChannel::DoCalcRxPowerSpectralDensity (Ptr<const SpectrumValue> txPsd,
 	NS_LOG_FUNCTION (this);
 	Ptr<SpectrumValue> rxPsd = Copy (txPsd);
 
-	Ptr<NetDevice> txDevice = a->GetObject<Node> ()->GetDevice (0);
-	Ptr<NetDevice> rxDevice = b->GetObject<Node> ()->GetDevice (0);
+	Ptr<NetDevice> txDevice = a->GetObject<Node> ()->GetDeviceMmWave (); // woody
+	Ptr<NetDevice> rxDevice = b->GetObject<Node> ()->GetDeviceMmWave (); // woody
 	Ptr<MmWaveEnbNetDevice> txEnb =
 					DynamicCast<MmWaveEnbNetDevice> (txDevice);
 	Ptr<MmWaveUeNetDevice> rxUe =
 					DynamicCast<MmWaveUeNetDevice> (rxDevice);
-
 	/* txAntennaNum[0]-number of vertical antenna elements
 	 * txAntennaNum[1]-number of horizontal antenna elements*/
 	uint8_t txAntennaNum[2];
@@ -1035,8 +1034,8 @@ MmWave3gppChannel::Get3gppTable (bool los, bool o2i, double hBS, double hUT, dou
 void
 MmWave3gppChannel::DeleteChannel(Ptr<const MobilityModel> a, Ptr<const MobilityModel> b) const
 {
-	Ptr<NetDevice> dev1 = a->GetObject<Node> ()->GetDevice (0);
-	Ptr<NetDevice> dev2 = b->GetObject<Node> ()->GetDevice (0);
+	Ptr<NetDevice> dev1 = a->GetObject<Node> ()->GetDeviceMmWave (); // woody
+	Ptr<NetDevice> dev2 = b->GetObject<Node> ()->GetDeviceMmWave (); // woody
 	NS_LOG_INFO("a position " << a->GetPosition() << " b " << b->GetPosition());
 	Ptr<Params3gpp> params = m_channelMap.find(std::make_pair(dev1,dev2))->second;
 	NS_LOG_INFO("params " << params);

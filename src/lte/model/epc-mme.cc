@@ -26,6 +26,10 @@
 
 #include "epc-mme.h"
 
+// woody
+#include <ns3/nstime.h>
+#include <ns3/simulator.h>
+
 namespace ns3 {
 
 NS_LOG_COMPONENT_DEFINE ("EpcMme");
@@ -190,6 +194,8 @@ EpcMme::DoInitialUeMessage (uint64_t mmeUeS1Id, uint16_t enbUeS1Id, uint64_t ims
         msg.bearerContextsToBeCreated.push_back (bearerContext);
       }
     msg. uli.gci = gci;
+    m_s11SapSgw->CreateSessionRequest (msg);
+    if (it->second->m_isMsgSenbExist == true) m_s11SapSgw->CreateSessionRequest (it->second->msgSenb);
   }
   else if (enbType == 1){
     uint8_t dcType;
@@ -217,10 +223,19 @@ EpcMme::DoInitialUeMessage (uint64_t mmeUeS1Id, uint16_t enbUeS1Id, uint64_t ims
       msg. isSenb = 1;
     }
     else {NS_FATAL_ERROR ("unimplemented DC type");}
+    if (it->second->cellId != 0)
+    {
+      m_s11SapSgw->CreateSessionRequest (msg);
+      it->second->m_isMsgSenbExist = false;
+    }
+    else
+    {
+      it->second->msgSenb = msg;
+      it->second->m_isMsgSenbExist = true;
+    }
   }
   else {NS_FATAL_ERROR ("invalid eNB type");}
 
- m_s11SapSgw->CreateSessionRequest (msg);
 }
 
 void 
@@ -298,6 +313,12 @@ EpcMme::DoCreateSessionResponse (EpcS11SapMme::CreateSessionResponseMessage msg)
     uint64_t mmeUeS1Id = it->second->mmeUeS1Id;
     std::map<uint16_t, Ptr<EnbInfo> >::iterator jt = m_enbInfoMap.find (cellId);
     NS_ASSERT_MSG (jt != m_enbInfoMap.end (), "could not find any eNB with CellId " << cellId);
+/*    if (jt == m_enbInfoMap.end())
+    {
+      NS_LOG_FUNCTION("Call DoCreateSessionResponse of SeNB after MeNB");
+      Simulator::Schedule (MilliSeconds (10), &EpcMme::DoCreateSessionResponse, this, msg);
+    }*/
+
     jt->second->s1apSapEnb->InitialContextSetupRequest (mmeUeS1Id, enbUeS1Id, erabToBeSetupList);
 
     std::list<EpcS1apSapEnb::ErabToBeSetupItem> erabToBeSetupListDc;

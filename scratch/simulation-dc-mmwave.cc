@@ -15,10 +15,10 @@
 #include <ns3/buildings-module.h>
 #include <ns3/packet.h>
 #include <ns3/tag.h>
-/*#include <ns3/lte-helper.h>
-#include <ns3/epc-helper.h>
-#include <ns3/point-to-point-helper.h>
-#include <ns3/lte-module.h>*/
+#include <ns3/lte-helper.h>
+#include <ns3/lte-module.h>
+
+#include <ns3/spectrum-channel.h>
 
 //#include "ns3/gtk-config-store.h"
 
@@ -101,18 +101,46 @@ Traces(uint16_t nodeNum)
 int
 main (int argc, char *argv[])
 {
+	LogComponentEnable("LteHelper", LOG_FUNCTION);
 	LogComponentEnable("MmWaveHelper", LOG_FUNCTION);
 	LogComponentEnable("MmWavePointToPointEpcHelper", LOG_FUNCTION);
 //	LogComponentEnable("MobilityBuildingInfo", LOG_FUNCTION);
 //	LogComponentEnable("BuildingsHelper", LOG_FUNCTION);
 //	LogComponentEnable("MmWaveEnbNetDevice", LOG_FUNCTION);
 //	LogComponentEnable("MmWaveUeNetDevice", LOG_FUNCTION);
+//	LogComponentEnable("LteUeNetDevice", LOG_FUNCTION);
+//	LogComponentEnable("LteEnbNetDevice", LOG_FUNCTION);
 //	LogComponentEnable("LteEnbRrc", LOG_FUNCTION);
 //	LogComponentEnable("LteUeRrc", LOG_FUNCTION);
 //	LogComponentEnable("EpcMme", LOG_FUNCTION);
 //	LogComponentEnable("EpcUeNas", LOG_FUNCTION);
 //	LogComponentEnable("EpcSgwPgwApplication", LOG_FUNCTION);
 //	LogComponentEnable("EpcEnbApplication", LOG_FUNCTION);
+//	LogComponentEnable("MmWaveEnbMac", LOG_FUNCTION);
+//	LogComponentEnable("MmWaveUeMac", LOG_FUNCTION);
+//	LogComponentEnable("MmWaveUePhy", LOG_FUNCTION);
+//	LogComponentEnable("MmWaveEnbPhy", LOG_FUNCTION);
+//	LogComponentEnable("mmWaveRrcProtocolIdeal", LOG_FUNCTION);
+//	LogComponentEnable("LteRrcProtocolIdeal", LOG_FUNCTION);
+//	LogComponentEnable("LtePdcp", LOG_FUNCTION);
+//	LogComponentEnable("LteRlcAm", LOG_FUNCTION);
+//	LogComponentEnable("LteRlc", LOG_FUNCTION);
+//	LogComponentEnable("Simulator", LOG_FUNCTION);
+//	LogComponentEnable("LteEnbMac", LOG_FUNCTION);
+//	LogComponentEnable("LteUeMac", LOG_FUNCTION);
+//	LogComponentEnable("LteEnbPhy", LOG_FUNCTION);
+//	LogComponentEnable("LteUePhy", LOG_FUNCTION);
+/*	LogComponentEnable("MmWaveSpectrumPhy", LOG_FUNCTION);
+	LogComponentEnable("MmWaveHarqPhy", LOG_FUNCTION);
+	LogComponentEnable("mmWaveChunkProcessor", LOG_FUNCTION);
+	LogComponentEnable("TcpSocketBase", LOG_FUNCTION);*/
+//	LogComponentEnable("MmWaveChannelMatrix", LOG_FUNCTION);
+//	LogComponentEnable("MmWaveChannelRaytracing", LOG_FUNCTION);
+//	LogComponentEnable("MmWaveBeamforming", LOG_FUNCTION);
+//	LogComponentEnable("MmWave3gppChannel", LOG_FUNCTION);
+//	LogComponentEnable("EpcTftClassifier", LOG_LEVEL_ALL);
+//	LogComponentEnable("Ipv4L3Protocol", LOG_FUNCTION);
+//	LogComponentEnable("TcpL4Protocol", LOG_FUNCTION);
 
 	uint16_t nodeNum = 1;
 	double simStopTime = 5;
@@ -120,7 +148,12 @@ main (int argc, char *argv[])
 	bool rlcAmEnabled = true;
 	std::string protocol = "TcpNewReno";
 	int bufferSize = 1000 *1000 * 3.5 * 0.4;
-	bool log_packetflow = false;
+	uint16_t downlinkRb = 100;
+	uint8_t dcType = 3; // (1:1A, 2:3C, 3:1X)
+	bool log_packetflow = true;
+	bool isTcp = true;
+	int PacketSize = 1400; //60000;
+	int splitAlgorithm = 2;
 	// This 3GPP channel model example only demonstrate the pathloss model. The fast fading model is still in developing.
 
 	//The available channel scenarios are 'RMa', 'UMa', 'UMi-StreetCanyon', 'InH-OfficeMixed', 'InH-OfficeOpen', 'InH-ShoppingMall'
@@ -147,7 +180,6 @@ main (int argc, char *argv[])
 	}
 
 	//Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (65535));
-	int PacketSize = 60000;
 	Config::SetDefault ("ns3::TcpSocketBase::MinRto", TimeValue (MilliSeconds (200)));
 	Config::SetDefault ("ns3::Ipv4L3Protocol::FragmentExpirationTimeout", TimeValue (Seconds (1)));
 	Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (PacketSize));
@@ -161,6 +193,9 @@ main (int argc, char *argv[])
 	Config::SetDefault ("ns3::MmWaveFlexTtiMacScheduler::HarqEnabled", BooleanValue(true));
 	Config::SetDefault ("ns3::MmWaveFlexTtiMaxWeightMacScheduler::HarqEnabled", BooleanValue(true));
 	Config::SetDefault ("ns3::MmWaveFlexTtiMacScheduler::HarqEnabled", BooleanValue(true));
+
+	Config::SetDefault ("ns3::UeManager::SplitAlgorithm", UintegerValue (splitAlgorithm));
+	Config::SetDefault ("ns3::LteEnbRrc::EpsBearerToRlcMapping", EnumValue (ns3::LteEnbRrc::RLC_AM_ALWAYS));
 	Config::SetDefault ("ns3::LteRlcAm::PollRetransmitTimer", TimeValue(MilliSeconds(2.0)));
 	Config::SetDefault ("ns3::LteRlcAm::ReorderingTimer", TimeValue(MilliSeconds(1.0)));
 	Config::SetDefault ("ns3::LteRlcAm::StatusProhibitTimer", TimeValue(MilliSeconds(1.0)));
@@ -230,7 +265,13 @@ main (int argc, char *argv[])
 		return 1;
 	}
 
-        NS_LOG_UNCOND("# Set mmwaveHelper, PointToPointEpcHelper");
+        NS_LOG_UNCOND("# Set LteHelper, mmwaveHelper, MmWavePointToPointEpcHelper");
+	Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
+	lteHelper->SetEnbDeviceAttribute ("DlBandwidth", UintegerValue (downlinkRb));
+	lteHelper->SetEnbDeviceAttribute ("UlBandwidth", UintegerValue (downlinkRb));
+	lteHelper->SetAttribute ("PathlossModel", StringValue ("ns3::LogDistancePropagationLossModel"));
+	lteHelper->Initialize();
+
 	Ptr<MmWaveHelper> mmwaveHelper = CreateObject<MmWaveHelper> ();
 	mmwaveHelper->SetAttribute ("PathlossModel", StringValue ("ns3::MmWave3gppBuildingsPropagationLossModel"));
 	mmwaveHelper->SetAttribute ("ChannelModel", StringValue ("ns3::MmWave3gppChannel"));
@@ -238,8 +279,11 @@ main (int argc, char *argv[])
 	mmwaveHelper->SetHarqEnabled(true);
 
 	Ptr<MmWavePointToPointEpcHelper>  epcHelper = CreateObject<MmWavePointToPointEpcHelper> ();
+	lteHelper->SetEpcHelper (epcHelper);
 	mmwaveHelper->SetEpcHelper (epcHelper);
 	Ptr<Node> pgw = epcHelper->GetPgwNode ();
+
+	pgw->GetApplication (0) -> GetObject<EpcSgwPgwApplication> () -> SetSplitAlgorithm(splitAlgorithm);
 
 	// Create a single RemoteHost
 	NS_LOG_UNCOND("# Create a remote host, and connect with P-GW");
@@ -292,7 +336,9 @@ main (int argc, char *argv[])
 	NS_LOG_UNCOND("# Create UE, eNB nodes");
 	NodeContainer ueNodes;
 	NodeContainer enbNodes;
+	NodeContainer senbNodes;
 	enbNodes.Create(1);
+	senbNodes.Create(1);
 	ueNodes.Create(nodeNum);
 
 	NS_LOG_UNCOND("# Mobility set up");
@@ -302,9 +348,11 @@ main (int argc, char *argv[])
 	enbmobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 	enbmobility.SetPositionAllocator(enbPositionAlloc);
 	enbmobility.Install (enbNodes);
+	enbmobility.Install (senbNodes);
 	BuildingsHelper::Install (enbNodes);
-	MobilityHelper uemobility;
+	BuildingsHelper::Install (senbNodes);
 
+	MobilityHelper uemobility;
 	uemobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 	Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator> ();
 	uePositionAlloc->Add (Vector (50, 0, hUT));
@@ -314,16 +362,18 @@ main (int argc, char *argv[])
 	uePositionAlloc->Add (Vector (41.0, 10.0, hUT));
 	uePositionAlloc->Add (Vector (80.0, 20.0, hUT));
 	uePositionAlloc->Add (Vector (-100.0, 53.0, hUT));
-
 	uemobility.SetPositionAllocator(uePositionAlloc);*/
-
 	uemobility.Install (ueNodes);
 	BuildingsHelper::Install (ueNodes);
 
 	// Install LTE Devices to the nodes
 	NS_LOG_UNCOND("# Install LTE device to the nodes");
-	NetDeviceContainer enbDevs = mmwaveHelper->InstallEnbDevice (enbNodes);
-	NetDeviceContainer ueDevs = mmwaveHelper->InstallUeDevice (ueNodes);
+	NetDeviceContainer enbLteDevs = lteHelper->InstallEnbDevice (enbNodes);
+	NetDeviceContainer senbMmWaveDevs = mmwaveHelper->InstallSenbDevice (senbNodes, 2);
+	mmwaveHelper->SetLteChannel (lteHelper->GetDlChannel(), lteHelper->GetUlChannel());
+	NetDeviceContainer ueDevs = mmwaveHelper->InstallDcUeDevice (ueNodes);
+
+        mmwaveHelper->NotifyEnbNeighbor (enbNodes.Get(0), senbNodes.Get(0));
 
 	// Install the IP stack on the UEs
 	// Assign IP address to UEs, and install applications
@@ -333,41 +383,68 @@ main (int argc, char *argv[])
 	ueIpIface = epcHelper->AssignUeIpv4Address (NetDeviceContainer (ueDevs));
 
 	NS_LOG_UNCOND("# Attach UE to eNB");
-	mmwaveHelper->AttachToClosestEnb (ueDevs, enbDevs);
+//	mmwaveHelper->AttachToClosestEnb (ueDevs, senbMmWaveDevs);
 	//mmwaveHelper->EnableTraces ();
+	uint16_t sinkPort = 1235;
+	Ptr<EpcTft> tftDc = Create<EpcTft> ();
+	EpcTft::PacketFilter tftPacketFilter;
+	tftPacketFilter.localPortStart = sinkPort;
+	tftPacketFilter.localPortEnd = sinkPort;
+	tftDc->Add (tftPacketFilter);
+
+	lteHelper->Attach (ueDevs.Get(0), enbLteDevs.Get(0));
+	mmwaveHelper->AttachDc (ueDevs.Get(0), senbMmWaveDevs.Get(0), tftDc, dcType); // woody, woody3C
+
+	// Add X2 interface
+	mmwaveHelper->AddX2Interface (enbNodes.Get(0), senbNodes.Get(0)); // woody
 
 	NS_LOG_UNCOND("# Install application");
 	ApplicationContainer sourceApps;
 	ApplicationContainer sinkApps;
-	uint16_t sinkPort = 20000;
 
-	for (uint16_t i = 0; i < ueNodes.GetN (); i++)
+	if (isTcp)
 	{
-		// Set the default gateway for the UE
-		Ptr<Node> ueNode = ueNodes.Get (i);
-		Ptr<Ipv4StaticRouting> ueStaticRouting = ipv4RoutingHelper.GetStaticRouting (ueNode->GetObject<Ipv4> ());
-		ueStaticRouting->SetDefaultRoute (epcHelper->GetUeDefaultGatewayAddress (), 1);
+		for (uint16_t i = 0; i < ueNodes.GetN (); i++)
+		{
+			// Set the default gateway for the UE
+			Ptr<Node> ueNode = ueNodes.Get (i);
+			Ptr<Ipv4StaticRouting> ueStaticRouting = ipv4RoutingHelper.GetStaticRouting (ueNode->GetObject<Ipv4> ());
+			ueStaticRouting->SetDefaultRoute (epcHelper->GetUeDefaultGatewayAddress (), 1);
+	
+			// Install and start applications on UEs and remote host
+			PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
+			sinkApps.Add (packetSinkHelper.Install (ueNodes.Get (i)));
+	
+			BulkSendHelper ftp ("ns3::TcpSocketFactory", InetSocketAddress (ueIpIface.GetAddress (i), sinkPort));
+			sourceApps.Add (ftp.Install (remoteHostContainer.Get (i)));
 
-		// Install and start applications on UEs and remote host
-		PacketSinkHelper packetSinkHelper ("ns3::TcpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
-		sinkApps.Add (packetSinkHelper.Install (ueNodes.Get (i)));
+			std::ostringstream fileName;
+			fileName<<"UE-"<<i+1<<"-TCP-DATA.txt";
 
-		BulkSendHelper ftp ("ns3::TcpSocketFactory", InetSocketAddress (ueIpIface.GetAddress (i), sinkPort));
-		sourceApps.Add (ftp.Install (remoteHostContainer.Get (i)));
+			AsciiTraceHelper asciiTraceHelper;
 
-		std::ostringstream fileName;
-		fileName<<"UE-"<<i+1<<"-TCP-DATA.txt";
+			Ptr<OutputStreamWrapper> stream = asciiTraceHelper.CreateFileStream (fileName.str ().c_str ());
+			sinkApps.Get(i)->TraceConnectWithoutContext("Rx",MakeBoundCallback (&Rx, stream));
+			sourceApps.Get(i)->SetStartTime(Seconds (0.1+0.01*i));
+			Simulator::Schedule (Seconds (0.1001+0.01*i), &Traces, i);
+				//sourceApps.Get(i)->SetStopTime (Seconds (10-1.5*i));
+			sourceApps.Get(i)->SetStopTime (Seconds (simStopTime));
 
-		AsciiTraceHelper asciiTraceHelper;
+			sinkPort++;
+		}
+	}
+	else
+	{
+		PacketSinkHelper dlPacketSinkHelperDc ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
+		sinkApps.Add (dlPacketSinkHelperDc.Install (ueNodes.Get(0)));
 
-		Ptr<OutputStreamWrapper> stream = asciiTraceHelper.CreateFileStream (fileName.str ().c_str ());
-		sinkApps.Get(i)->TraceConnectWithoutContext("Rx",MakeBoundCallback (&Rx, stream));
-		sourceApps.Get(i)->SetStartTime(Seconds (0.1+0.01*i));
-		Simulator::Schedule (Seconds (0.1001+0.01*i), &Traces, i);
-		//sourceApps.Get(i)->SetStopTime (Seconds (10-1.5*i));
-		sourceApps.Get(i)->SetStopTime (Seconds (simStopTime));
+		UdpClientHelper dlClientDc (ueIpIface.GetAddress (0), sinkPort);
+		dlClientDc.SetAttribute ("Interval", TimeValue (MilliSeconds(1000)));
+		dlClientDc.SetAttribute ("MaxPackets", UintegerValue(1000000));
+		sourceApps.Add (dlClientDc.Install (remoteHostContainer.Get (0)));
 
-		sinkPort++;
+		sourceApps.Start (Seconds (0.1));
+		sourceApps.Stop (Seconds (simStopTime));
 	}
 
 	sinkApps.Start (Seconds (0.));

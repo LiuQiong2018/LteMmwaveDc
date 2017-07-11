@@ -266,7 +266,7 @@ main (int argc, char *argv[])
   NS_LOG_UNCOND(" -pdcpReorderingTimer(ms) = " << (unsigned) pdcpReorderingTimer);
   NS_LOG_UNCOND(" -x2LinkDelay(ms) = " << x2LinkDelay);
 
-//  LogComponentEnable ("LteHelper", LOG_FUNCTION);
+  LogComponentEnable ("LteHelper", LOG_FUNCTION);
 //  LogComponentEnable ("PointToPointEpcHelper", LOG_FUNCTION);
 //  LogComponentEnable ("EpcEnbApplication", LOG_FUNCTION);
 //  LogComponentEnable ("EpcSgwPgwApplication", LOG_FUNCTION);

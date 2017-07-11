@@ -358,6 +358,7 @@ EpcSgwPgwApplication::RecvFromTunDevice (Ptr<Packet> packet, const Address& sour
   if (it == m_ueInfoByAddrMap.end ())
     {        
       NS_LOG_WARN ("unknown UE address " << ueAddr);
+NS_LOG_UNCOND ("unknown UE address " << ueAddr);
     }
   else
     {
@@ -366,6 +367,7 @@ EpcSgwPgwApplication::RecvFromTunDevice (Ptr<Packet> packet, const Address& sour
       if (teid == 0)
         {
           NS_LOG_WARN ("no matching bearer for this packet");                   
+NS_LOG_UNCOND ("no matching bearer for this packet");                   
         }
       else
         {

@@ -226,8 +226,8 @@ MmWaveChannelRaytracing::DoCalcRxPowerSpectralDensity (Ptr<const SpectrumValue> 
 	Ptr<SpectrumValue> rxPsd = Copy (txPsd);
 	Ptr<AntennaArrayModel> txAntennaArray, rxAntennaArray;
 
-	Ptr<NetDevice> txDevice = a->GetObject<Node> ()->GetDevice (0);
-	Ptr<NetDevice> rxDevice = b->GetObject<Node> ()->GetDevice (0);
+	Ptr<NetDevice> txDevice = a->GetObject<Node> ()->GetDeviceMmWave (); // woody
+	Ptr<NetDevice> rxDevice = b->GetObject<Node> ()->GetDeviceMmWave (); // woody
 	Ptr<MmWaveEnbNetDevice> txEnb =
 					DynamicCast<MmWaveEnbNetDevice> (txDevice);
 	Ptr<MmWaveUeNetDevice> rxUe =

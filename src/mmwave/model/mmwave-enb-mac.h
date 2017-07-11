@@ -46,7 +46,7 @@ namespace ns3
 		std::vector<uint8_t> m_lcidList;
 	};
 
-typedef std::vector < DlHarqProcessInfo> DlHarqProcessesBuffer_t;
+typedef std::vector < DlHarqProcessInfo> MmWaveDlHarqProcessesBuffer_t; // woody
 
 class MmWaveEnbMac : public Object
 {
@@ -201,7 +201,7 @@ private:
 
 	std::vector <DlHarqInfo> m_dlHarqInfoReceived; // DL HARQ feedback received
 	std::vector <UlHarqInfo> m_ulHarqInfoReceived; // UL HARQ feedback received
-	std::map <uint16_t, DlHarqProcessesBuffer_t> m_miDlHarqProcessesPackets; // Packet under trasmission of the DL HARQ process
+	std::map <uint16_t, MmWaveDlHarqProcessesBuffer_t> m_miDlHarqProcessesPackets; // Packet under trasmission of the DL HARQ process, woody
 
 };
 

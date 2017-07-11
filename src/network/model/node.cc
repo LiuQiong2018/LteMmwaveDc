@@ -96,6 +96,7 @@ Node::Construct (void)
 {
   NS_LOG_FUNCTION (this);
   m_id = NodeList::Add (this);
+  m_deviceMmWave = NULL; //woody
 }
 
 Node::~Node ()
@@ -146,6 +147,22 @@ Node::GetDevice (uint32_t index) const
                  " is out of range (only have " << m_devices.size () << " devices).");
   return m_devices[index];
 }
+
+void
+Node::AddDeviceMmWave (Ptr<NetDevice> device) // woody
+{
+  NS_LOG_FUNCTION (this);
+  m_deviceMmWave = device;
+}
+
+Ptr<NetDevice>
+Node::GetDeviceMmWave (void) // woody
+{
+  NS_LOG_FUNCTION (this);
+//  if (m_deviceMmWave == NULL) NS_FATAL_ERROR ("MmWave Device not exist");
+  return m_deviceMmWave;
+}
+
 uint32_t 
 Node::GetNDevices (void) const
 {

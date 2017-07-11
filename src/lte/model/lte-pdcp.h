@@ -153,6 +153,8 @@ public:
   void IsEnbPdcp (void);
   Ptr<LteEnbRrc> m_enbRrc;
   Ptr<LteUeRrc> m_ueRrc;
+  void SetDcType (uint8_t dcType);
+  uint8_t m_dcType;
 
 protected:
   // Interface provided to upper RRC entity

@@ -588,7 +588,7 @@ MmWaveEnbPhy::AddUePhy (uint64_t imsi, Ptr<NetDevice> ueDevice)
 	if (it == m_ueAttached.end ())
 	{
 		m_ueAttached.insert(imsi);
-		m_deviceMap.push_back(ueDevice);
+		m_deviceMap.push_back(ueDevice->GetNode()->GetDeviceMmWave()); // woody
 		return (true);
 	}
 	else

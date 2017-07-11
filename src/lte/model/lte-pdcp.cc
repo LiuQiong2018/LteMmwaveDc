@@ -89,7 +89,6 @@ LtePdcp::LtePdcp ()
   k=0;
   check =false;
   m_isEnbPdcp =false; // woody
-  enable1X=false;
 }
 
 LtePdcp::~LtePdcp ()
@@ -202,15 +201,17 @@ LtePdcp::DoTransmitPdcpSdu (Ptr<Packet> p)
   NS_LOG_FUNCTION (this << m_rnti << (uint32_t) m_lcid << p->GetSize ());
 LtePdcpHeader pdcpHeader;
 //////////////////////////////////////////////////////// sjkang0601 for mapping Gtpu SN to Pdcp SN
+
 if(!m_isEnbPdcp)  //for ue
 {
         pdcpHeader.SetSequenceNumber (m_txSequenceNumber);
          m_txSequenceNumber++;
 }
-else if (enable1X)  ////  the case of 1X
+else if (m_dcType == 3)  ////  the case of 1X
 {
         Gtpu_SN_Header gtpu_SN_Header;
         p->RemoveHeader(gtpu_SN_Header);
+
         m_txSequenceNumber= gtpu_SN_Header.GetGtpuSN();
 	pdcpHeader.SetSequenceNumber (m_txSequenceNumber);
   
@@ -250,6 +251,12 @@ void
 LtePdcp::IsEnbPdcp () // woody3C
 {
   m_isEnbPdcp = true;
+}
+
+void
+LtePdcp::SetDcType (uint8_t dcType) // woody
+{
+  m_dcType = dcType;
 }
 
 void

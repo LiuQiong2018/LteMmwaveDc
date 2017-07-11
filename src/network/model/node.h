@@ -209,6 +209,9 @@ public:
    */
   static bool ChecksumEnabled (void);
 
+  // woody
+  void AddDeviceMmWave (Ptr<NetDevice> device);
+  Ptr<NetDevice> GetDeviceMmWave (void);
 
 protected:
   /**
@@ -219,6 +222,8 @@ protected:
   virtual void DoDispose (void);
   virtual void DoInitialize (void);
 private:
+
+  Ptr<NetDevice> m_deviceMmWave; // woody
 
   /**
    * \brief Notifies all the DeviceAdditionListener about the new device added.

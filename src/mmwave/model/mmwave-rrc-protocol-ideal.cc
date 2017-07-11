@@ -107,6 +107,7 @@ mmWaveUeRrcProtocolIdeal::DoSetup (LteUeRrcSapUser::SetupParameters params)
 void 
 mmWaveUeRrcProtocolIdeal::DoSendRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg)
 {
+  NS_LOG_FUNCTION( this);
   // initialize the RNTI and get the EnbLteRrcSapProvider for the
   // eNB we are currently attached to
   m_rnti = m_rrc->GetRnti ();
@@ -177,6 +178,7 @@ mmWaveUeRrcProtocolIdeal::DoSendMeasurementReport (LteRrcSap::MeasurementReport 
 void 
 mmWaveUeRrcProtocolIdeal::SetEnbRrcSapProvider ()
 {
+  NS_LOG_FUNCTION (this);
   uint16_t cellId = m_rrc->GetCellId ();  
 
   // walk list of all nodes to get the peer eNB
@@ -193,17 +195,30 @@ mmWaveUeRrcProtocolIdeal::SetEnbRrcSapProvider ()
            (j < nDevs) && (!found);
            j++)
         {
-          enbDev = node->GetDevice (j)->GetObject <MmWaveEnbNetDevice> ();
-          if (enbDev == 0)
+          if (node->GetDeviceMmWave () != 0 && node->GetDeviceMmWave ()->GetObject <MmWaveEnbNetDevice> () != 0) // woody
             {
-              continue;
+              Ptr<MmWaveEnbNetDevice> enbDevMmWave = node->GetDeviceMmWave ()->GetObject <MmWaveEnbNetDevice> ();
+              if (enbDevMmWave->GetCellId () == cellId)
+                {
+                  found = true;
+                  enbDev = enbDevMmWave; 
+                  break;
+                }
             }
           else
             {
-              if (enbDev->GetCellId () == cellId)
+              enbDev = node->GetDevice (j)->GetObject <MmWaveEnbNetDevice> ();
+              if (enbDev == 0)
                 {
-                  found = true;          
-                  break;
+                  continue;
+                }
+              else
+                {
+                  if (enbDev->GetCellId () == cellId)
+                    {
+                      found = true;          
+                      break;
+                    }
                 }
             }
         }
@@ -309,14 +324,14 @@ MmWaveEnbRrcProtocolIdeal::DoSendSystemInformation (LteRrcSap::SystemInformation
       int nDevs = node->GetNDevices ();
       for (int j = 0; j < nDevs; ++j)
         {
-          Ptr<MmWaveUeNetDevice> mmWaveUeDev = node->GetDevice (j)->GetObject <MmWaveUeNetDevice> ();
-          if (mmWaveUeDev != 0)
+          if (node->GetDeviceMmWave() != 0 && node->GetDeviceMmWave ()->GetObject <MmWaveUeNetDevice> () != 0) // woody
             {
-              Ptr<LteUeRrc> ueRrc = mmWaveUeDev->GetRrc ();
-              NS_LOG_LOGIC ("considering UE IMSI " << mmWaveUeDev->GetImsi () << " that has cellId " << ueRrc->GetCellId ());
+              Ptr<MmWaveUeNetDevice> mmWaveUeDevDc = node->GetDeviceMmWave ()->GetObject <MmWaveUeNetDevice> (); // woody
+              Ptr<LteUeRrc> ueRrc = mmWaveUeDevDc->GetRrc ();
+              NS_LOG_LOGIC ("considering UE IMSI " << mmWaveUeDevDc->GetImsi () << " that has cellId " << ueRrc->GetCellId ());
               if (ueRrc->GetCellId () == m_cellId)
                 {
-                  NS_LOG_LOGIC ("sending SI to IMSI " << mmWaveUeDev->GetImsi ());
+                  NS_LOG_LOGIC ("sending SI to IMSI " << mmWaveUeDevDc->GetImsi ());
                   ueRrc->GetLteUeRrcSapProvider ()->RecvSystemInformation (msg);
                   Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
                                        &LteUeRrcSapProvider::RecvSystemInformation,
@@ -324,6 +339,23 @@ MmWaveEnbRrcProtocolIdeal::DoSendSystemInformation (LteRrcSap::SystemInformation
                                        msg);          
                 }             
             }
+          else{
+            Ptr<MmWaveUeNetDevice> mmWaveUeDev = node->GetDevice (j)->GetObject <MmWaveUeNetDevice> ();
+            if (mmWaveUeDev != 0)
+              {
+                Ptr<LteUeRrc> ueRrc = mmWaveUeDev->GetRrc ();
+                NS_LOG_LOGIC ("considering UE IMSI " << mmWaveUeDev->GetImsi () << " that has cellId " << ueRrc->GetCellId ());
+                if (ueRrc->GetCellId () == m_cellId)
+                  {
+                    NS_LOG_LOGIC ("sending SI to IMSI " << mmWaveUeDev->GetImsi ());
+                    ueRrc->GetLteUeRrcSapProvider ()->RecvSystemInformation (msg);
+                    Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+                                         &LteUeRrcSapProvider::RecvSystemInformation,
+                                         ueRrc->GetLteUeRrcSapProvider (), 
+                                         msg);          
+                  }             
+              }
+           }
         }
     } 
 }

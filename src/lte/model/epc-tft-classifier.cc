@@ -131,6 +131,8 @@ EpcTftClassifier::Classify (Ptr<Packet> p, EpcTft::Direction direction)
   else
     {
       NS_LOG_INFO ("Unknown protocol: " << protocol);
+if ( protocol == 0) NS_LOG_UNCOND (" protocol == 0");
+else NS_LOG_UNCOND(" unknown protocol");
       return 0;  // no match
     }
 

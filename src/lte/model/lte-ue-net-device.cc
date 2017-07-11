@@ -131,7 +131,7 @@ LteUeNetDevice::LteUeNetDevice (void)
   : m_isConstructed (false)
 {
   NS_LOG_FUNCTION (this);
-  m_isDc = false;
+  m_isDc = false; // woody
 }
 
 LteUeNetDevice::~LteUeNetDevice (void)
@@ -313,6 +313,20 @@ LteUeNetDevice::Send (Ptr<Packet> packet, const Address& dest, uint16_t protocol
       return true;
     }  
   return m_nas->Send (packet);
+}
+
+void
+LteUeNetDevice::SetMmWaveUeNetDeviceDc (Ptr<MmWaveUeNetDevice> dev)
+{
+  NS_LOG_FUNCTION (this);
+  m_mmWaveUeNetDeviceDc = dev;
+}
+
+Ptr<MmWaveUeNetDevice>
+LteUeNetDevice::GetMmWaveUeNetDeviceDc ()
+{
+  NS_LOG_FUNCTION (this);
+  return m_mmWaveUeNetDeviceDc;
 }
 
 

@@ -396,13 +396,15 @@ UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gt
       rlc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser ());
       drbInfo->m_pdcp = pdcp;
 
+      pdcp->IsEnbPdcp(); // woody3C
+      pdcp->SetDcType (dcType); // woody
+      m_srb1->m_pdcp->SetDcType (dcType); // woody
       if (m_enableAssistInfo)
       {
         // woody
         m_assistInfo.bearerId = bearerId;
         m_assistInfo.is_enb = true;
 
-        pdcp->IsEnbPdcp(); // woody3C
         pdcp->m_enbRrc = m_rrc;
         pdcp->SetAssistInfoPtr(&m_assistInfo);
         rlc->IsEnbRlc();
