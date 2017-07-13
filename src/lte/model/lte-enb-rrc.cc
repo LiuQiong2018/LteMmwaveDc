@@ -349,7 +349,7 @@ UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gt
   drbInfo->m_logicalChannelIdentity = lcid;
   drbInfo->m_gtpTeid = gtpTeid;
   drbInfo->m_transportLayerAddress = transportLayerAddress;
-
+ //std::cout << bid << "  "<< drbid<< "  " <<lcid <<"  "<<gtpTeid << std::endl;
   drbInfo->m_dcType = dcType; // woody3C
 
   if(dcType == 2){ // woody3C, need to add Senb condition
@@ -472,6 +472,7 @@ UeManager::StartDataRadioBearers ()
        drbIdIt != m_drbsToBeStarted.end ();
        ++drbIdIt)
     {
+	 // std::cout << "drbId "<< *drbIdIt << std::endl;
       std::map <uint8_t, Ptr<LteDataRadioBearerInfo> >::iterator drbIt = m_drbMap.find (*drbIdIt);
       NS_ASSERT (drbIt != m_drbMap.end ());
       drbIt->second->m_rlc->Initialize ();
@@ -1562,8 +1563,10 @@ UeManager::SwitchToState (State newState)
       break;
     }
 }
-
-
+std::map <uint8_t, Ptr<LteDataRadioBearerInfo> >
+UeManager::GetDrb(){
+	return m_drbMap;
+}
 
 ///////////////////////////////////////////
 // eNB RRC methods
@@ -1588,6 +1591,8 @@ LteEnbRrc::LteEnbRrc ()
     m_reconfigureUes (false),
     m_firstSibTime (16)
 {
+	//std::cout<< this << std::endl;
+	//Traces();
   NS_LOG_FUNCTION (this);
   m_cmacSapUser = new EnbRrcMemberLteEnbCmacSapUser (this);
   m_handoverManagementSapUser = new MemberLteHandoverManagementSapUser<LteEnbRrc> (this);
@@ -2095,18 +2100,24 @@ LteEnbRrc::SetCellId (uint16_t cellId)
   m_sib1.cellAccessRelatedInfo.cellIdentity = cellId;
   m_cphySapProvider->SetSystemInformationBlockType1 (m_sib1);
 }
-
+int c_c=0, c__c=0;
 bool
 LteEnbRrc::SendData (Ptr<Packet> packet)
 {
   NS_LOG_FUNCTION (this << packet);
-
+ // std::cout<< this << std::endl;
   EpsBearerTag tag;
   bool found = packet->RemovePacketTag (tag);
   NS_ASSERT_MSG (found, "no EpsBearerTag found in packet to be sent");
   Ptr<UeManager> ueManager = GetUeManager (tag.GetRnti ());
   ueManager->SendData (tag.GetBid (), packet);
-
+  if (c_c ==0 && m_isMenb ){
+  Traces(); c_c=1;
+ }
+  if (m_ismmWave && c__c==0){
+	Traces();
+	c__c=1;
+  }
   return true;
 }
 
@@ -2178,6 +2189,7 @@ LteEnbRrc::DoCompleteSetupUe (uint16_t rnti, LteEnbRrcSapProvider::CompleteSetup
 {
   NS_LOG_FUNCTION (this << rnti);
   GetUeManager (rnti)->CompleteSetupUe (params);
+
 }
 
 void
@@ -2577,6 +2589,11 @@ LteEnbRrc::AddUe (UeManager::State state)
   ueManager->Initialize ();
   NS_LOG_DEBUG (this << " New UE RNTI " << rnti << " cellId " << m_cellId << " srs CI " << ueManager->GetSrsConfigurationIndex ());
   m_newUeContextTrace (m_cellId, rnti);
+
+  //m_ueNumber++; //sjkang0712
+  //if (m_ueNumber == totalUe) //sjkang
+ // Simulator::Schedule(Seconds(0.2), &LteEnbRrc::Traces, this); //sjkang
+	 // Traces();
   return rnti;
 }
 
@@ -2908,7 +2925,25 @@ LteEnbRrc::GetAssistInfoPtr () // woody
   NS_LOG_FUNCTION (this);
   return m_assistInfoPtr;
 }
+void
+LteEnbRrc::Traces(){  //sjkang0713
+	 std::map<uint16_t, Ptr<UeManager> >::iterator it = m_ueMap.begin();
+	 for (it=m_ueMap.begin(); it!=m_ueMap.end();it++){
+		 std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > DrbInfo; //sjkang0712
+		DrbInfo = it->second->GetDrb();
+		std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > ::iterator itt;
+       for (itt=DrbInfo.begin(); itt!= DrbInfo.end(); itt++){
 
+       if(itt->second->m_rlcConfig.choice == LteRrcSap::RlcConfig::AM && DrbInfo.size()!=0 )
+       {
+      uint16_t drbId=itt->second->m_drbIdentity;
+    itt->second->m_rlc->GetObject<LteRlcAm>()->SetRlcAmIdentity
+	(it->second->GetImsi(),drbId, m_isMenb, m_ismmWave);
+
+         }
+	 }
+}
+}
 
 } // namespace ns3
 
