@@ -150,7 +150,7 @@ main (int argc, char *argv[])
 	int bufferSize = 1000 *1000 * 3.5 * 0.4;
 	uint16_t downlinkRb = 100;
 	uint8_t dcType = 3; // (1:1A, 2:3C, 3:1X)
-	bool log_packetflow = true;
+	bool log_packetflow = false;
 	bool isTcp = true;
 	int PacketSize = 1400; //60000;
 	int splitAlgorithm = 2;
@@ -384,7 +384,7 @@ main (int argc, char *argv[])
 
 	NS_LOG_UNCOND("# Attach UE to eNB");
 //	mmwaveHelper->AttachToClosestEnb (ueDevs, senbMmWaveDevs);
-	//mmwaveHelper->EnableTraces ();
+	mmwaveHelper->EnableTraces ();
 	uint16_t sinkPort = 1235;
 	Ptr<EpcTft> tftDc = Create<EpcTft> ();
 	EpcTft::PacketFilter tftPacketFilter;
