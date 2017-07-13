@@ -339,7 +339,7 @@ public:
   void RecvAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
 
   int SplitAlgorithm (); // woody
-
+  std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > GetDrb(); //sjkang0712
 private:
 
   uint16_t m_dcCell; // woody3C
@@ -549,6 +549,10 @@ class LteEnbRrc : public Object
   friend class UeManager;
 
 public:
+
+  void Traces(); //sjkang0712
+    uint8_t m_ueNumber=0; //sjkang
+    uint8_t totalUe=0;
   /**
    * create an RRC instance for use within an eNB
    *
