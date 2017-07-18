@@ -1145,7 +1145,7 @@ LteHelper::InstallSingleDcUeDevice (Ptr<Node> n) // woody
 
   rrc->SetRrcDc (rrcDc); // woody3C
   rrcDc->SetRrcDc (rrc);
-  rrc->SetDc();
+  rrc->SetMaster();
 
   NS_ABORT_MSG_IF (m_imsiCounter >= 0xFFFFFFFF, "max num UEs exceeded");
   uint64_t imsi = ++m_imsiCounter;

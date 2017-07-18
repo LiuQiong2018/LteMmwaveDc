@@ -95,6 +95,7 @@ LteRlcAm::LteRlcAm ()
 
   m_isEnbRlc = false; // woody
   sumPacketSize = 0; // woody
+  lastSumPacketSize = 0; // woody
   m_assistInfoPtr = 0; // woody
 }
 
@@ -2283,24 +2284,30 @@ LteRlcAm::CalculatePathThroughput (std::ofstream *stream) // woody
 void
 LteRlcAm::SetRlcAmIdentity(uint16_t imsi, uint16_t bearerId, bool isMenb, bool isMmenb){ //sjkang0713
 	std::ostringstream fileName;
-	if(isMenb){
-	fileName<<"Menb-"<<"UE-"<<imsi <<"-"<< bearerId <<"-RLC-DATA.txt";
-	}else if(isMmenb){
-	fileName<<"Senb-"<<"UE-"<<imsi <<"-"<< bearerId <<"-RLC-DATA.txt";
-			}
-			AsciiTraceHelper asciiTraceHelper;
- FileStremFromRlcAddress[this] =
-		 asciiTraceHelper.CreateFileStream (fileName.str ().c_str ());
- *FileStremFromRlcAddress[this]->GetStream()<< "time "<<"\t" <<"txonBufferSize"
+	if (isMenb)
+	{
+		fileName<<"Menb-"<<"UE-"<<imsi <<"-"<< bearerId <<"-RLC-DATA.txt";
+	}
+	else if (isMmenb)
+	{
+		fileName<<"Senb-"<<"UE-"<<imsi <<"-"<< bearerId <<"-RLC-DATA.txt";
+	}
+
+	AsciiTraceHelper asciiTraceHelper;
+	FileStremFromRlcAddress[this] = asciiTraceHelper.CreateFileStream (fileName.str ().c_str ());
+	*FileStremFromRlcAddress[this]->GetStream()<< "time "<<"\t" <<"txonBufferSize"
 		 <<"\t"<<"txedBufferSize" << "\t"<<"retxBufferSize" <<"\t" <<"reciveBufferSize" <<std::endl;
-	  ReportRlcBufferSizeForUE();
+
+	ReportRlcBufferSizeForUE();
 }
+
 void
 LteRlcAm::ReportRlcBufferSizeForUE(){ //sjkang0712
-
-	  *FileStremFromRlcAddress[this]->GetStream()<<Simulator::Now().GetSeconds()<< " \t   "
-		  << m_txonBufferSize << "  \t    " << m_txedBufferSize << "  \t              " << m_retxBufferSize
-		 <<"  \t            "<<m_rxonBuffer.size()  << std::endl;
-	 Simulator::Schedule (MilliSeconds (100), &LteRlcAm::ReportRlcBufferSizeForUE, this);
+	*FileStremFromRlcAddress[this]->GetStream()<<Simulator::Now().GetSeconds()<< " \t   "
+		<< m_txonBufferSize << "  \t    " << m_txedBufferSize << "  \t              " << m_retxBufferSize
+		<<"  \t            "<<m_rxonBuffer.size()  << std::endl;
+	
+	Simulator::Schedule (MilliSeconds (10), &LteRlcAm::ReportRlcBufferSizeForUE, this);
 }
+
 } // namespace ns3

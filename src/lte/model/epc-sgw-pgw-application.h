@@ -179,7 +179,6 @@ private:
 
   void DoDeleteBearerCommand (EpcS11SapSgw::DeleteBearerCommandMessage req);
   void DoDeleteBearerResponse (EpcS11SapSgw::DeleteBearerResponseMessage req);
-  uint16_t gtpu_SN=0;
   /**
    * store info for each UE connected to this SGW
    */
@@ -321,7 +320,14 @@ public:
     Ipv4Address sgwAddr;    
   };
 
+  struct TeidInfo // woody
+  {
+    uint16_t gtpu_SN;
+  };
+
   std::map<uint16_t, EnbInfo> m_enbInfoByCellId;
+
+  std::map<uint32_t, TeidInfo> m_teidInfoMap; // woody
 };
 
 } //namespace ns3

@@ -113,6 +113,7 @@ public:
 	void AttachDc (Ptr<NetDevice> ueDevice, Ptr<NetDevice> enbDevice, Ptr<EpcTft> tftDc, uint8_t dcType); // woody
 	void NotifyEnbNeighbor (Ptr<Node> enb, Ptr<Node> senb); // woody
 	void AddX2Interface (Ptr<Node> enbNode1, Ptr<Node> enbNode2); // woody
+	void ConnectAssistInfo (Ptr<Node> enb, Ptr<Node> senb, Ptr<Node> ue, uint8_t dcType); // woody
 
 protected:
 	virtual void DoInitialize();

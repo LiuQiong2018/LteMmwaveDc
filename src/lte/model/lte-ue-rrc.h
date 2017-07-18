@@ -298,11 +298,11 @@ public:
   void SendAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
   LteRrcSap::AssistInfo m_assistInfo; // woody
 
-  void SetDc (); // woody
+  void SetMaster (); // woody
 
 private:
 
-  bool m_isDc; // woody
+  bool m_isMaster; // woody
 
   Ptr<LteUeRrc> m_rrcDc; // woody3C
   LteRlcSapUser* m_rlcSapUserDc; // woody3C

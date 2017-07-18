@@ -624,7 +624,7 @@ MmWaveHelper::InstallSingleDcUeDevice (Ptr<Node> n) // woody
 
 	rrc->SetRrcDc (rrcDc);
 	rrcDc->SetRrcDc (rrc);
-	rrc->SetDc();
+	rrc->SetMaster();
 
 	NS_ABORT_MSG_IF (m_imsiCounter >= 0xFFFFFFFF, "max num UEs exceeded");
 	uint64_t imsi = ++m_imsiCounter;
@@ -1336,8 +1336,8 @@ MmWaveHelper::ActivateDataRadioBearer (Ptr<NetDevice> ueDevice, EpsBearer bearer
 void
 MmWaveHelper::EnableTraces (void)
 {
-	EnableDlPhyTrace ();
-	EnableUlPhyTrace ();
+//	EnableDlPhyTrace ();
+//	EnableUlPhyTrace ();
 	//EnableEnbPacketCountTrace ();
 	//EnableUePacketCountTrace ();
 	//EnableTransportBlockTrace ();
@@ -1447,6 +1447,42 @@ MmWaveHelper::AddX2Interface (Ptr<Node> enbNode1, Ptr<Node> enbNode2) // woody
   NS_LOG_INFO ("setting up the X2 interface");
 
   m_epcHelper->GetObject<MmWavePointToPointEpcHelper> ()->AddX2InterfaceMmWave (enbNode1, enbNode2);
+}
+
+void
+MmWaveHelper::ConnectAssistInfo (Ptr<Node> enb, Ptr<Node> senb, Ptr<Node> ue, uint8_t dcType) // woody
+{
+  NS_LOG_FUNCTION (this);
+  Ptr<LteEnbNetDevice> enbDev = enb->GetDevice(0)->GetObject<LteEnbNetDevice> ();
+  Ptr<MmWaveEnbNetDevice> senbDev = senb->GetDevice(0)->GetObject<MmWaveEnbNetDevice> ();
+  Ptr<LteUeNetDevice> ueDev = ue->GetDevice(0)->GetObject<LteUeNetDevice> ();
+  Ptr<MmWaveUeNetDevice> ueDevDc = ueDev->GetMmWaveUeNetDeviceDc();
+
+  Ptr<LteEnbRrc> enbRrc = enbDev->GetRrc();
+  Ptr<LteEnbRrc> senbRrc = senbDev->GetRrc();
+  Ptr<LteUeRrc> ueRrc = ueDev->GetRrc();
+  Ptr<LteUeRrc> ueRrcDc = ueDevDc->GetRrc();
+//  Ptr<PfFfMacScheduler> enbPfFfMacScheduler = enbDev->GetFfMacScheduler()->GetObject<PfFfMacScheduler>();
+//  Ptr<PfFfMacScheduler> senbPfFfMacScheduler = senbDev->GetFfMacScheduler()->GetObject<PfFfMacScheduler>();
+//  if(!enbPfFfMacScheduler || !senbPfFfMacScheduler) NS_FATAL_ERROR ("Only PfFfMacScheduler is dealt");
+
+  Ptr<Node> pgwNode = m_epcHelper->GetPgwNode ();
+  Ptr<EpcSgwPgwApplication> pgwApp = pgwNode->GetApplication (0)->GetObject<EpcSgwPgwApplication> ();
+
+  enbRrc->SetAssistInfoSink (enbRrc, pgwApp, dcType);
+  senbRrc->SetAssistInfoSink (enbRrc, pgwApp, dcType);
+//  ueRrc->SetAssistInfoSink (enbRrc, pgwApp, dcType);
+//  ueRrcDc->SetAssistInfoSink (enbRrc, pgwApp, dcType);
+//  enbPfFfMacScheduler->SetRrc (enbRrc);
+//  senbPfFfMacScheduler->SetRrc (senbRrc);
+
+  if (dcType == 2){
+    enbRrc->IsAssistInfoSink ();
+  }
+  else if (dcType == 3){
+    pgwApp->IsAssistInfoSink ();
+  }
+  else NS_FATAL_ERROR ("Unimplemented DC type");
 }
 
 }

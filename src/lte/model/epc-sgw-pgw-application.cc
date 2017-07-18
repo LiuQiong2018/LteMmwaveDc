@@ -456,8 +456,11 @@ EpcSgwPgwApplication::SendToS1uSocket (Ptr<Packet> packet, Ipv4Address enbAddr, 
   gtpu.SetTeid (teid);
   // From 3GPP TS 29.281 v10.0.0 Section 5.1
   // Length of the payload + the non obligatory GTP-U header
-  gtpu.SetSequenceNumber(gtpu_SN); //sjkang0601
-  gtpu_SN ++; //sjkang0601
+  std::map<uint32_t, TeidInfo>::iterator teidit = m_teidInfoMap.find (teid); // woody
+  NS_ASSERT_MSG (teidit != m_teidInfoMap.end (), "unknown TEID " << teid); // woody
+
+  gtpu.SetSequenceNumber(teidit->second.gtpu_SN); //sjkang0601
+  teidit->second.gtpu_SN ++; //sjkang0601
 
   gtpu.SetLength (packet->GetSize () + gtpu.GetSerializedSize () - 8);  
   packet->AddHeader (gtpu);
@@ -567,6 +570,12 @@ EpcSgwPgwApplication::DoCreateSessionRequest (EpcS11SapSgw::CreateSessionRequest
       bearerContext.tft = bit->tft;
       bearerContext.dcType = bit->dcType; // woody
       res.bearerContextsCreated.push_back (bearerContext);
+
+      // woody
+      TeidInfo teidInfo;
+      teidInfo.gtpu_SN = 0;
+      m_teidInfoMap[teid] = teidInfo;
+
     }
   m_s11SapMme->CreateSessionResponse (res);
   

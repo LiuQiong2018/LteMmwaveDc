@@ -467,7 +467,7 @@ NS_LOG_UNCOND(it->first);
       PdcpDelayCalculater(nextPDCP_SN); 
       m_pdcpSapUser->ReceivePdcpSdu(PdcpBuffer[nextPDCP_SN]);
 
-      printData("Reordered_SN", nextPDCP_SN);
+      printData(" Reordered_SN ", nextPDCP_SN);
       PdcpBuffer.erase(nextPDCP_SN);
       Last_Submitted_PDCP_RX_SN = nextPDCP_SN;
 

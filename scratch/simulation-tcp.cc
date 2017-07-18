@@ -222,8 +222,8 @@ main (int argc, char *argv[])
   // default values
   double simTime = 20.0; // total duration of simulation (s)
   double startTime =1.0;
-  bool log_packetflow = false; // enabling log module for packet tracing
-  int dcType_t = 2; // Dual connectivity type (0:Single Connection, 1:1A, 2:3C, 3:1X)
+  bool log_packetflow = true; // enabling log module for packet tracing
+  int dcType_t = 3; // Dual connectivity type (0:Single Connection, 1:1A, 2:3C, 3:1X)
   int pdcpReorderingTimer_t = 100; // PDCP packet reordering timer (ms)
   int x2LinkDelay = 0;
   bool enablePDCPReordering = true; // enabling PDCP packet reordering function
@@ -270,10 +270,11 @@ main (int argc, char *argv[])
 //  LogComponentEnable ("PointToPointEpcHelper", LOG_FUNCTION);
 //  LogComponentEnable ("EpcEnbApplication", LOG_FUNCTION);
 //  LogComponentEnable ("EpcSgwPgwApplication", LOG_FUNCTION);
-//  LogComponentEnable ("LteEnbRrc", LOG_FUNCTION);
-//  LogComponentEnable ("LtePdcp", LOG_FUNCTION);
+  LogComponentEnable ("LteEnbRrc", LOG_FUNCTION);
+  LogComponentEnable ("LteUeRrc", LOG_FUNCTION);
+  LogComponentEnable ("LtePdcp", LOG_FUNCTION);
 //  LogComponentEnable ("LteRlcUm", LOG_FUNCTION);
-//  LogComponentEnable ("LteRlcAm", LOG_FUNCTION);
+  LogComponentEnable ("LteRlcAm", LOG_FUNCTION);
 //  LogComponentEnable ("LteUeRrc", LOG_FUNCTION);
 //  LogComponentEnable ("EpcUeNas", LOG_FUNCTION);
 

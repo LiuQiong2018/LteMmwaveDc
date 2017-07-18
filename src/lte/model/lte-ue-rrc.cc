@@ -146,7 +146,7 @@ LteUeRrc::LteUeRrc ()
   m_rrcSapProvider = new MemberLteUeRrcSapProvider<LteUeRrc> (this);
   m_drbPdcpSapUser = new LtePdcpSpecificLtePdcpSapUser<LteUeRrc> (this);
   m_asSapProvider = new MemberLteAsSapProvider<LteUeRrc> (this);
-  m_isDc = false; // woody
+  m_isMaster = false; // woody
   objectCounter = 0; // woody
 }
 
@@ -264,10 +264,10 @@ LteUeRrc::GetTypeId (void)
 }
 
 void
-LteUeRrc::SetDc () // woody
+LteUeRrc::SetMaster () // woody
 {
   NS_LOG_FUNCTION (this);
-  m_isDc = true;
+  m_isMaster = true;
 }
 
 void
@@ -440,7 +440,6 @@ LteUeRrc::DoSendData (Ptr<Packet> packet, uint8_t bid)
   NS_LOG_FUNCTION (this << packet);
 
   uint8_t drbid = Bid2Drbid (bid);
-
   if (drbid != 0)
     {
   std::map<uint8_t, Ptr<LteDataRadioBearerInfo> >::iterator it =   m_drbMap.find (drbid);
@@ -1328,13 +1327,28 @@ LteUeRrc::ApplyRadioResourceConfigDedicated (LteRrcSap::RadioResourceConfigDedic
 		SetLteRlcSapUserDc (drbInfo->m_drbIdentity, pdcp->GetLteRlcSapUser());
 
                 rlc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser());
-                std::ofstream* streamPathThroughput = new std::ofstream("_0_path_throughput.txt");
-                if(drbInfo->m_drbIdentity == 2) rlc->CalculatePathThroughput(streamPathThroughput);
               }
               else{
                 rlc->SetLteRlcSapUser (itRlc->second);
-                std::ofstream* streamPathThroughput = new std::ofstream("_1_path_throughput.txt");
-                if(drbInfo->m_drbIdentity == 2) rlc->CalculatePathThroughput(streamPathThroughput);
+              }
+
+              if (m_isMaster){
+                if(drbInfo->m_drbIdentity == 2){
+                  std::ostringstream o;
+                  o << "Menb-UE-" << m_imsi << "-2-RLC-PathThroughput.txt";
+                  std::ofstream* streamPathThroughput = new std::ofstream(o.str());
+//                std::ofstream* streamPathThroughput = new std::ofstream("Menb-UE-" << m_imsi << "-" << drbInfo->m_drbIdentity << "-RLC-Menb-PathThroughput.txt");
+                  rlc->CalculatePathThroughput(streamPathThroughput);
+                }
+              }
+              else{
+                if(drbInfo->m_drbIdentity == 2){
+                  std::ostringstream o;
+                  o << "Senb-UE-" << m_imsi << "-2-RLC-PathThroughput.txt";
+                  std::ofstream* streamPathThroughput = new std::ofstream(o.str());
+//                std::ofstream* streamPathThroughput = new std::ofstream("Menb-UE-" << m_imsi << "-" << drbInfo->m_drbIdentity << "-RLC-Senb-PathThroughput.txt");
+                  rlc->CalculatePathThroughput(streamPathThroughput);
+                }
               }
 
 //	      if(m_rlcSapUserDc){

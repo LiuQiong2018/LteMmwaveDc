@@ -124,7 +124,9 @@ MyApp::StopApplication (void)
       m_socket->Close ();
     }
 }
+
 bool isTcp_for_MyApp=false;
+
 void
 MyApp::SendPacket (void)
 {
@@ -155,8 +157,6 @@ MyApp::ScheduleTx (void)
     }
 }
 
-
-
 static void
 CwndChange (Ptr<OutputStreamWrapper> stream, uint32_t oldCwnd, uint32_t newCwnd)
 {
@@ -168,8 +168,6 @@ RttChange (Ptr<OutputStreamWrapper> stream, Time oldRtt, Time newRtt)
 {
 	*stream->GetStream () << Simulator::Now ().GetSeconds () << "\t" << oldRtt.GetSeconds () << "\t" << newRtt.GetSeconds () << std::endl;
 }
-
-
 
 double instantPacketSize[100], packetRxTime[100], lastPacketRxTime[100];
 double sumPacketSize[100];
@@ -189,14 +187,18 @@ Rx (Ptr<OutputStreamWrapper> stream, uint16_t i, Ptr<const Packet> packet, const
     instantPacketSize[i] = packet->GetSize();
   }
 }
+
 int previousLoss[100];
+
 void
 Loss(Ptr<OutputStreamWrapper> stream, uint16_t i, uint64_t received, uint32_t loss ){
 	*stream->GetStream () << Simulator::Now ().GetSeconds () << "\t" <<received<< "\t"<<
 			loss << "\t" << loss-previousLoss[i] <<std::endl;
 	previousLoss[i]=loss;
 }
+
 uint64_t lastTotalRx[100];
+
 void
 CalculateThroughput (Ptr<OutputStreamWrapper> stream, Ptr<PacketSink> sink, uint16_t i)
 {
@@ -278,9 +280,9 @@ main (int argc, char *argv[])
 //	LogComponentEnable("MmWaveEnbPhy", LOG_FUNCTION);
 //	LogComponentEnable("mmWaveRrcProtocolIdeal", LOG_FUNCTION);
 //	LogComponentEnable("LteRrcProtocolIdeal", LOG_FUNCTION);
-//	LogComponentEnable("LtePdcp", LOG_INFO);
- //  LogComponentEnable("LteRlcAm", LOG_FUNCTION);
-	//LogComponentEnable("LteRlcUm",LOG_FUNCTION);
+//	LogComponentEnable("LtePdcp", LOG_FUNCTION);
+//	LogComponentEnable("LteRlcAm", LOG_FUNCTION);
+//	LogComponentEnable("LteRlcUm",LOG_FUNCTION);
 //	LogComponentEnable("LteRlc", LOG_FUNCTION);
 //	LogComponentEnable("Simulator", LOG_FUNCTION);
 //	LogComponentEnable("LteEnbMac", LOG_FUNCTION);
@@ -298,57 +300,60 @@ main (int argc, char *argv[])
 //	LogComponentEnable("EpcTftClassifier", LOG_LEVEL_ALL);
 //	LogComponentEnable("Ipv4L3Protocol", LOG_FUNCTION);
 //	LogComponentEnable("TcpL4Protocol", LOG_FUNCTION);
-    bool enablePDCPReordering =true;
-	uint16_t nodeNum = 20;
-	double simStopTime = 100;
-	bool harqEnabled = true;
+
+	bool enablePDCPReordering =true;
+	int nodeNum_t = 2;
+	double simStopTime = 10;
 	bool rlcAmEnabled = true;
 	std::string protocol = "TcpNewReno";
 	int bufferSize = 1024*1024*100;
-
 	uint16_t downlinkRb = 100;
-	uint8_t dcType = 3; // (1:1A, 2:3C, 3:1X)
+	int dcType_t = 3; // (1:1A, 2:3C, 3:1X)
 	bool log_packetflow = false;
 	bool isTcp = true;
 	isTcp_for_MyApp = isTcp;
 	int PacketSize = 1400; //60000;
-	int splitAlgorithm_t = 4;
-	uint16_t pdcpReorderingTimer_t=300;
-	uint16_t x2LinkDelay =0;
-	// This 3GPP channel model example only demonstrate the pathloss model. The fast fading model is still in developing.
-	 std::string outputName;
-	  uint8_t dcType;
-	  uint16_t  pdcpReorderingTimer, splitAlgorithm;
+	int splitAlgorithm_t = 3; // (0:MeNB only, 1:SeNB only, 2:alternative, 3:Delay-based, 4:Queue-based)
+	int pdcpReorderingTimer_t = 300;
+//	uint16_t x2LinkDelay =0;
+
+	std::string outputName;
+	uint8_t dcType;
+	uint16_t pdcpReorderingTimer, splitAlgorithm;
+	uint16_t nodeNum;
+
 	//The available channel scenarios are 'RMa', 'UMa', 'UMi-StreetCanyon', 'InH-OfficeMixed', 'InH-OfficeOpen', 'InH-ShoppingMall'
 	std::string scenario = "UMa";
 	std::string condition = "n";
 
 	CommandLine cmd;
-//	cmd.AddValue("numEnb", "Number of eNBs", numEnb);
-//	cmd.AddValue("numUe", "Number of UEs per eNB", numUe);
+	cmd.AddValue("nodeNum", "Number of UEs", nodeNum_t);
 	cmd.AddValue("simTime", "Total duration of the simulation [s])", simStopTime);
 //	cmd.AddValue("interPacketInterval", "Inter-packet interval [us])", interPacketInterval);
-	cmd.AddValue("harq", "Enable Hybrid ARQ", harqEnabled);
-	cmd.AddValue("rlcAm", "Enable RLC-AM", rlcAmEnabled);
-	cmd.AddValue("protocol", "TCP protocol", protocol);
+//	cmd.AddValue("harq", "Enable Hybrid ARQ", harqEnabled);
+//	cmd.AddValue("rlcAm", "Enable RLC-AM", rlcAmEnabled);
+//	cmd.AddValue("protocol", "TCP protocol", protocol);
 	cmd.AddValue("bufferSize", "buffer size", bufferSize);
 	cmd.AddValue("pdcpReorderingTimer", "PDCP reordering timer [ms])", pdcpReorderingTimer_t);
-	cmd.AddValue("outputName", "Output file namei prefix", outputName);
+//	cmd.AddValue("outputName", "Output file name prefix", outputName);
 	cmd.AddValue("splitAlgorithm", "Selecting splitting algorithm", splitAlgorithm_t);
 	cmd.AddValue("dcType", "Select DC Type", dcType_t);
 
 	cmd.Parse(argc, argv);
+	nodeNum = (unsigned) nodeNum_t;
 	dcType = (unsigned) dcType_t;
-	 pdcpReorderingTimer = (unsigned) pdcpReorderingTimer_t;
-	 splitAlgorithm = (unsigned) splitAlgorithm_t;
-	  NS_LOG_UNCOND("Simulation Setting");
-	    NS_LOG_UNCOND(" -simTime(s) = " << simStopTime);
-	    if (isTcp)  NS_LOG_UNCOND(" -App = TCP");
-	    else NS_LOG_UNCOND(" -App = UDP");
-	    NS_LOG_UNCOND(" -dcType = " << (unsigned) dcType);
-	    NS_LOG_UNCOND(" -splitAlgorithm = " << (unsigned) splitAlgorithm);
-	    NS_LOG_UNCOND(" -pdcpReorderingTimer(ms) = " << (unsigned) pdcpReorderingTimer);
-	    NS_LOG_UNCOND(" -x2LinkDelay(ms) = " << x2LinkDelay);
+	pdcpReorderingTimer = (unsigned) pdcpReorderingTimer_t;
+	splitAlgorithm = (unsigned) splitAlgorithm_t;
+
+	NS_LOG_UNCOND("Simulation Setting");
+	NS_LOG_UNCOND(" -simTime(s) = " << simStopTime);
+	NS_LOG_UNCOND(" -nodeNum = " << nodeNum);
+	if (isTcp)  NS_LOG_UNCOND(" -App = TCP");
+	else NS_LOG_UNCOND(" -App = UDP");
+	NS_LOG_UNCOND(" -dcType = " << (unsigned) dcType);
+	NS_LOG_UNCOND(" -splitAlgorithm = " << (unsigned) splitAlgorithm);
+	NS_LOG_UNCOND(" -pdcpReorderingTimer(ms) = " << (unsigned) pdcpReorderingTimer);
+//	NS_LOG_UNCOND(" -x2LinkDelay(ms) = " << x2LinkDelay);
 
 	if (log_packetflow){
 		LogComponentEnable ("EpcEnbApplication", LOG_INFO);
@@ -357,50 +362,17 @@ main (int argc, char *argv[])
 		LogComponentEnable ("PacketSink", LOG_INFO);
 		LogComponentEnable ("UdpClient", LOG_INFO);
 	}
-	 Config::SetDefault ("ns3::UeManager::SplitAlgorithm", UintegerValue (splitAlgorithm));
+
+	Config::SetDefault ("ns3::UeManager::SplitAlgorithm", UintegerValue (splitAlgorithm));
 	Config::SetDefault ("ns3::LtePdcp::ExpiredTime",TimeValue(MilliSeconds(pdcpReorderingTimer)));
-	//Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (65535));
+
+//	Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (65535));
 	Config::SetDefault ("ns3::TcpSocketBase::MinRto", TimeValue (MilliSeconds (200)));
 	Config::SetDefault ("ns3::Ipv4L3Protocol::FragmentExpirationTimeout", TimeValue (Seconds (1)));
 	Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (PacketSize));
 	Config::SetDefault ("ns3::TcpSocket::DelAckCount", UintegerValue (1));
-
 	Config::SetDefault ("ns3::TcpSocket::SndBufSize", UintegerValue (131072*200));
 	Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue (131072*200));
-
-	Config::SetDefault ("ns3::MmWaveHelper::RlcAmEnabled", BooleanValue(rlcAmEnabled));
-	Config::SetDefault ("ns3::MmWaveHelper::HarqEnabled", BooleanValue(harqEnabled));
-	Config::SetDefault ("ns3::MmWaveFlexTtiMacScheduler::HarqEnabled", BooleanValue(true));
-	Config::SetDefault ("ns3::MmWaveFlexTtiMaxWeightMacScheduler::HarqEnabled", BooleanValue(true));
-	Config::SetDefault ("ns3::MmWaveFlexTtiMacScheduler::HarqEnabled", BooleanValue(true));
-
-	Config::SetDefault ("ns3::UeManager::SplitAlgorithm", UintegerValue (splitAlgorithm));
-  if(isTcp){
-	Config::SetDefault ("ns3::LteEnbRrc::EpsBearerToRlcMapping", EnumValue (ns3::LteEnbRrc::RLC_AM_ALWAYS));
-	//Config::SetDefault ("ns3::LteRlcAm::PollRetransmitTimer", TimeValue(MilliSeconds(2.0)));
-	//Config::SetDefault ("ns3::LteRlcAm::ReorderingTimer", TimeValue(MilliSeconds(1.0)));
-	//Config::SetDefault ("ns3::LteRlcAm::StatusProhibitTimer", TimeValue(MilliSeconds(1.0)));
-	//Config::SetDefault ("ns3::LteRlcAm::ReportBufferStatusTimer", TimeValue(MilliSeconds(2.0)));
-	Config::SetDefault ("ns3::LteRlcAm::EnableAQM", BooleanValue (true));
-	Config::SetDefault ("ns3::LteRlcAm::MaxTxBufferSize", UintegerValue (bufferSize));
-	Config::SetDefault ("ns3::LtePdcp::EnablePDCPReordering", BooleanValue (enablePDCPReordering));
-	Config::SetDefault ("ns3::LtePdcp::ExpiredTime",TimeValue(MilliSeconds(pdcpReorderingTimer)));
-
-  }
-	else {
-
-		    Config::SetDefault ("ns3::LteEnbRrc::EpsBearerToRlcMapping", EnumValue (ns3::LteEnbRrc::RLC_AM_ALWAYS));
-		    Config::SetDefault ("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue (200 * 1024 * 1024));
-		    Config::SetDefault ("ns3::LtePdcp::EnablePDCPReordering", BooleanValue (false));
-
-	}
-	Config::SetDefault ("ns3::Queue::MaxPackets", UintegerValue (1000*1000));
-	Config::SetDefault ("ns3::CoDelQueueDisc::Mode", StringValue ("QUEUE_MODE_PACKETS"));
-	Config::SetDefault ("ns3::CoDelQueueDisc::MaxPackets", UintegerValue (50000));
-	//Config::SetDefault ("ns3::CoDelQueue::Interval", StringValue ("500ms"));
-	//Config::SetDefault ("ns3::CoDelQueue::Target", StringValue ("50ms"));
-
-//	Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TcpCubic::GetTypeId ()));
 	if(protocol == "TcpNewReno")
 	{
 		Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TcpNewReno::GetTypeId ()));
@@ -409,11 +381,44 @@ main (int argc, char *argv[])
 	{
 		Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TcpVegas::GetTypeId ()));
 	}
+	else if (protocol == "TcpCubic")
+	{
+		Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TcpCubic::GetTypeId ()));
+	}
 	else
 	{
 		std::cout<<protocol<<" Unkown protocol.\n";
 		return 1;
 	}
+
+//	if(isTcp){
+		Config::SetDefault ("ns3::LteEnbRrc::EpsBearerToRlcMapping", EnumValue (ns3::LteEnbRrc::RLC_AM_ALWAYS));
+//		Config::SetDefault ("ns3::LteRlcAm::PollRetransmitTimer", TimeValue(MilliSeconds(2.0)));
+//		Config::SetDefault ("ns3::LteRlcAm::ReorderingTimer", TimeValue(MilliSeconds(1.0)));
+//		Config::SetDefault ("ns3::LteRlcAm::StatusProhibitTimer", TimeValue(MilliSeconds(1.0)));
+//		Config::SetDefault ("ns3::LteRlcAm::ReportBufferStatusTimer", TimeValue(MilliSeconds(2.0)));
+		Config::SetDefault ("ns3::LteRlcAm::EnableAQM", BooleanValue (true));
+		Config::SetDefault ("ns3::LteRlcAm::MaxTxBufferSize", UintegerValue (bufferSize));
+		Config::SetDefault ("ns3::LtePdcp::EnablePDCPReordering", BooleanValue (enablePDCPReordering));
+		Config::SetDefault ("ns3::LtePdcp::ExpiredTime",TimeValue(MilliSeconds(pdcpReorderingTimer)));
+/*	}
+	else {
+		Config::SetDefault ("ns3::LteEnbRrc::EpsBearerToRlcMapping", EnumValue (ns3::LteEnbRrc::RLC_AM_ALWAYS)); // RLC_UM not verififed
+		Config::SetDefault ("ns3::LteRlcUm::MaxTxBufferSize", UintegerValue (200 * 1024 * 1024));
+		Config::SetDefault ("ns3::LtePdcp::EnablePDCPReordering", BooleanValue (false));
+	}*/
+
+	Config::SetDefault ("ns3::Queue::MaxPackets", UintegerValue (1000*1000));
+	Config::SetDefault ("ns3::CoDelQueueDisc::Mode", StringValue ("QUEUE_MODE_PACKETS"));
+	Config::SetDefault ("ns3::CoDelQueueDisc::MaxPackets", UintegerValue (50000));
+	Config::SetDefault ("ns3::CoDelQueueDisc::Interval", StringValue ("100ms"));
+	Config::SetDefault ("ns3::CoDelQueueDisc::Target", StringValue ("5ms"));
+
+	Config::SetDefault ("ns3::MmWaveHelper::RlcAmEnabled", BooleanValue(rlcAmEnabled));
+	Config::SetDefault ("ns3::MmWaveHelper::HarqEnabled", BooleanValue(true));
+	Config::SetDefault ("ns3::MmWaveFlexTtiMacScheduler::HarqEnabled", BooleanValue(true));
+	Config::SetDefault ("ns3::MmWaveFlexTtiMaxWeightMacScheduler::HarqEnabled", BooleanValue(true));
+	Config::SetDefault ("ns3::MmWaveFlexTtiMacScheduler::HarqEnabled", BooleanValue(true));
 
 	Config::SetDefault ("ns3::MmWave3gppPropagationLossModel::ChannelCondition", StringValue(condition));
 	Config::SetDefault ("ns3::MmWave3gppPropagationLossModel::Scenario", StringValue(scenario));
@@ -426,7 +431,6 @@ main (int argc, char *argv[])
 	Config::SetDefault ("ns3::MmWave3gppChannel::PortraitMode", BooleanValue(true)); // use blockage model with UT in portrait mode
 	Config::SetDefault ("ns3::MmWave3gppChannel::NumNonselfBlocking", IntegerValue(4)); // number of non-self blocking obstacles
 	Config::SetDefault ("ns3::MmWave3gppChannel::BlockerSpeed", DoubleValue(1)); // speed of non-self blocking obstacles
-
 	Config::SetDefault ("ns3::MmWavePhyMacCommon::NumHarqProcess", UintegerValue(100));
 
 	double hBS = 0; //base station antenna height in meters;
@@ -492,7 +496,7 @@ main (int argc, char *argv[])
 		// Create the Internet
 		PointToPointHelper p2ph;
 		p2ph.SetDeviceAttribute ("DataRate", DataRateValue (DataRate ("100Gb/s")));
-		p2ph.SetDeviceAttribute ("Mtu", UintegerValue (1500));
+		p2ph.SetDeviceAttribute ("Mtu", UintegerValue (1600));
 		if (i==0)
 		{
 			p2ph.SetChannelAttribute ("Delay", TimeValue (Seconds (0.009)));
@@ -567,9 +571,11 @@ main (int argc, char *argv[])
 
         mmwaveHelper->NotifyEnbNeighbor (enbNodes.Get(0), senbNodes.Get(0));
 
+	if (dcType == 2 || dcType == 3) mmwaveHelper->ConnectAssistInfo (enbNodes.Get(0), senbNodes.Get(0), ueNodes.Get(0), dcType);
+
 	// Install the IP stack on the UEs
 	// Assign IP address to UEs, and install applications
-	NS_LOG_UNCOND("Install the IP stack on the UE");
+	NS_LOG_UNCOND("# Install the IP stack on the UE");
 	internet.Install (ueNodes);
 	Ipv4InterfaceContainer ueIpIface;
 	ueIpIface = epcHelper->AssignUeIpv4Address (NetDeviceContainer (ueDevs));
@@ -613,7 +619,7 @@ main (int argc, char *argv[])
 		     Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (remoteHostContainer.Get (i), TcpSocketFactory::GetTypeId ());
 			Ptr<MyApp> app = CreateObject<MyApp> ();
 			Address sinkAddress (InetSocketAddress (ueIpIface.GetAddress (i), sinkPort));
-			app->Setup (ns3TcpSocket, sinkAddress, 1400, 5000000, DataRate ("200Mb/s"));//sychoi, tcp data rate config
+			app->Setup (ns3TcpSocket, sinkAddress, 1400, 5000000, DataRate ("100Mb/s"));//sychoi, tcp data rate config
 
 			std::ostringstream fileName;
 			fileName<<"UE-"<<i+1<<"-TCP-DATA.txt";
@@ -692,11 +698,12 @@ main (int argc, char *argv[])
 	Simulator::Stop (Seconds (simStopTime));
 	Simulator::Run ();
 
-		for (uint16_t i=0 ; i<ueNodes.GetN() ; i++){
-				 double lteThroughput = sinkApps.Get(i)->GetObject<PacketSink>()->GetTotalRx () * 8.0 / (1000000.0*(simStopTime - (0.01*i+0.1)));
-				    //NS_LOG_UNCOND ("LastPacket " << packetRxTime << " TotalFlow " << sumPacketSize << "Mb");
-				   NS_LOG_UNCOND ("UE(" << ueIpIface.GetAddress(i) <<") AverageLteThroughput: " << lteThroughput << "Mbps");
-				}
+	for (uint16_t i=0 ; i<ueNodes.GetN() ; i++){
+		double lteThroughput = sinkApps.Get(i)->GetObject<PacketSink>()->GetTotalRx () * 8.0 / (1000000.0*(simStopTime - (0.01*i+0.1)));
+//		NS_LOG_UNCOND ("LastPacket " << packetRxTime << " TotalFlow " << sumPacketSize << "Mb");
+		NS_LOG_UNCOND ("UE(" << ueIpIface.GetAddress(i) <<") AverageLteThroughput: " << lteThroughput << "Mbps");
+	}
+
 	Simulator::Destroy ();
 
 	return 0;
