@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 
 /utils.pyc
@@ -10,3 +11,10 @@ waf-tools
 
 *.txt
 .DS_Store
+=======
+.waf*
+build/
+*.pyc
+*.o
+
+>>>>>>> dc_origin/master
