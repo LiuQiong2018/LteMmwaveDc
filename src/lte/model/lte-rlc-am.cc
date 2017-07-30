@@ -97,6 +97,7 @@ LteRlcAm::LteRlcAm ()
   sumPacketSize = 0; // woody
   lastSumPacketSize = 0; // woody
   m_assistInfoPtr = 0; // woody
+  isInitialized = false; // woody
 }
 
 LteRlcAm::~LteRlcAm ()
@@ -149,7 +150,11 @@ LteRlcAm::GetTypeId (void)
 				   BooleanValue (false),
 				   MakeBooleanAccessor (&LteRlcAm::m_enableAqm),
 				   MakeBooleanChecker ())
-
+         .AddAttribute ("SplitTimerInterval", // woody
+                                        "Setting splitTimerInterval for calculating average queuing delay",
+                                   UintegerValue (0),
+                                   MakeUintegerAccessor (&LteRlcAm::splitTimerInterval),
+                                   MakeUintegerChecker<uint32_t> ())
     ;
   return tid;
 }
@@ -2135,13 +2140,13 @@ LteRlcAm::ExpireRbsTimer (void)
 
 // sjkang, the implementation for extracting parameters
 
-std::ofstream OutFile5("enb1_BuffersizefromSampling.txt");
-std::ofstream OutFile6("ue_BuffersizefromSampling.txt");
-std::ofstream OutFile7("enb2_BuffersizefromSampling.txt");
+//std::ofstream OutFile5("enb1_BuffersizefromSampling.txt");
+//std::ofstream OutFile6("ue_BuffersizefromSampling.txt");
+//std::ofstream OutFile7("enb2_BuffersizefromSampling.txt");
 
-std::ofstream OutFile8("enb1_BuffersizeAndDelay.txt");
-std::ofstream OutFile9("ue_BuffersizeAndDelay.txt");
-std::ofstream OutFile10("enb2_BuffersizeAndDelay.txt");
+//std::ofstream OutFile8("enb1_BuffersizeAndDelay.txt");
+//std::ofstream OutFile9("ue_BuffersizeAndDelay.txt");
+//std::ofstream OutFile10("enb2_BuffersizeAndDelay.txt");
 
 // declaration for distinguishing the addresses (UE, Menb, Senb)
 Ptr <ns3::LteRlcAm> enb1_Address,ue_Address,enb2_Address;
@@ -2197,10 +2202,10 @@ LteRlcAm::GetBufferSize(){
 
       averageBufferSize =(double)sum/10.0;
 
-      if (enb1_Address ==this) OutFile5<< Simulator::Now().GetSeconds()<< "\t" <<this << "\t"<< SamplingTime.GetSeconds() << "\t" << averageBufferSize << std::endl;
+/*      if (enb1_Address ==this) OutFile5<< Simulator::Now().GetSeconds()<< "\t" <<this << "\t"<< SamplingTime.GetSeconds() << "\t" << averageBufferSize << std::endl;
       else if(ue_Address==this) OutFile6<<Simulator::Now().GetSeconds()<< "\t" <<this << "\t"<< SamplingTime.GetSeconds() << "\t" << averageBufferSize << std::endl;
       else if (enb2_Address == this) OutFile7<<Simulator::Now().GetSeconds()<< "\t" <<this << "\t"<< SamplingTime.GetSeconds() << "\t" << averageBufferSize << std::endl;
-
+*/
       // woody
       if (m_assistInfoPtr){
         m_assistInfoPtr->rlc_avg_buffer = averageBufferSize;
@@ -2219,21 +2224,26 @@ LteRlcAm::GetBufferSize(){
 }
 
 /// the function for taking the information from the DoReportBufferStatus
-int cc=0;
 
 void
 LteRlcAm::GetReportBufferStatus(LteMacSapProvider::ReportBufferStatusParameters r){
   NS_LOG_FUNCTION(this);
-  if (cc==0)
+  if (isInitialized == false)
   {
-    OutFile6<<"Rlc Transmission Queue" << "\t"<< "Rlc retransmission Queue" << "\t"  <<"the Head Of Line delay of the transmission queue"<<"\t"<<" the Head Of Line delay of the retransmission queue"<<std::endl;
-    cc=1;
+/*    OutFile6<<"Rlc Transmission Queue" << "\t"<< "Rlc retransmission Queue" << "\t"  <<"the Head Of Line delay of the transmission queue"<<"\t"<<" the Head Of Line delay of the retransmission queue"<<std::endl;*/
+    sumDelay = 0;
+    packetNum = 0;
+    sumBufferSize = 0;
+
+    Simulator::Schedule (MilliSeconds (0), &LteRlcAm::AverageDelayTimer, this);
+
+    isInitialized = true;
   }
 
-  if (enb1_Address ==this) OutFile8<< Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
+/*  if (enb1_Address ==this) OutFile8<< Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
   else if(ue_Address==this) OutFile9<<Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
   else if (enb2_Address == this) OutFile10<<Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<<(double)r.retxQueueHolDelay/1000.0 << std::endl;
-
+*/
   // woody
   if (m_assistInfoPtr){
     m_assistInfoPtr->rlc_tx_queue = r.txQueueSize;
@@ -2246,10 +2256,56 @@ LteRlcAm::GetReportBufferStatus(LteMacSapProvider::ReportBufferStatusParameters 
     }
     else
     {
-// woody, temporarily AssistInfo blocked
+// woody, temporarily UE-side AssistInfo blocked
 //      m_ueRrc->SendAssistInfo (*m_assistInfoPtr);
     }
   }
+
+  sumDelay += (double)r.txQueueHolDelay;
+  sumBufferSize += r.txQueueSize + r.retxQueueSize;
+  packetNum ++;
+}
+
+std::ofstream OutFile_testAl5 ("test_tempt.txt");
+
+void
+LteRlcAm::AverageDelayTimer () // woody
+{
+        NS_LOG_FUNCTION (this);
+
+	if (packetNum == 0)
+	{
+		m_assistInfoPtr->rlc_average_delay = 0.001;
+		m_assistInfoPtr->rlc_average_queue = 0;
+	}
+	else
+	{
+		m_assistInfoPtr->rlc_average_delay = (unsigned) sumDelay / packetNum * 1000;
+		m_assistInfoPtr->rlc_average_queue = sumBufferSize / packetNum;
+	}
+
+	if (m_isEnbRlc) m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
+if (m_isEnbRlc)
+{
+OutFile_testAl5 <<
+         Simulator::Now().GetSeconds() << "\t"
+	<< sumBufferSize << "\t"
+	<< packetNum << "\t"
+	<< m_isEnbRlc << "\t"
+	<< m_assistInfoPtr->rlc_average_queue << "\t" << this << "\t" << (unsigned) m_assistInfoPtr->bearerId << m_assistInfoPtr << std::endl;
+/*NS_LOG_UNCOND(
+         Simulator::Now().GetSeconds() << "\tRlcAm\t"
+	<< sumDelay << "\t"
+	<< packetNum << "\t"
+	<< m_isEnbRlc << "\t"
+	<< m_assistInfoPtr->rlc_average_delay << "\t" << this << "\t" << (unsigned) m_assistInfoPtr->bearerId << "\t" << m_isEnbRlc << "\t" << m_enbRrc);*/
+}
+
+	sumDelay = 0;
+	sumBufferSize = 0;
+	packetNum = 0;
+
+	Simulator::Schedule (MilliSeconds (splitTimerInterval), &LteRlcAm::AverageDelayTimer, this);
 }
 
 void

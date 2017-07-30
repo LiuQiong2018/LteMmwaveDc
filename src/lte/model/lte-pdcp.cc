@@ -591,7 +591,7 @@ NS_LOG_INFO("PDCP Reordering Timer Expired at " << Simulator::Now().GetSeconds()
   }
 }
 
-std::ofstream OutFile0("pdcp_delay_measure.txt");
+//std::ofstream OutFile0("pdcp_delay_measure.txt");
 
 // the function for getting total delay (= pdcp propagation dealy + pdcp reordering delay)
 Time
@@ -600,12 +600,12 @@ LtePdcp::PdcpDelayCalculater(uint16_t SN){
   PdcpDelay = Simulator::Now() - CheckingArrivalOfSN[SN]+PropagationDelaybySN[SN];
   CheckingArrivalOfSN.erase(SN);
   PropagationDelaybySN.erase(SN);
-  if (!OutFile0.is_open ())
+/*  if (!OutFile0.is_open ())
   {
     OutFile0.open ("PdcpDelay_Measure.txt");
   }
   OutFile0<<Simulator::Now().GetSeconds()<< "\t" << "SequenceNumber" << "\t" << SN <<"\t"<<"Delay" << "\t" << PdcpDelay.GetSeconds()<< "\t" << std::endl;
-
+*/
   // woody
   if (m_assistInfoPtr)
   {
@@ -623,12 +623,12 @@ LtePdcp::PdcpDelayCalculater(uint16_t SN){
   }
   return PdcpDelay;
 }
-
+/*
 std::ofstream OutFile1("pdcp_1_RX_SN.txt");
 std::ofstream OutFile2("pdcp_1_Reordered_SN.txt");
 std::ofstream OutFile3("pdcp_1_RX_SN.txt");
 std::ofstream OutFile4("pdcp_2_Reordered_SN.txt");
-
+*/
 int count =0;
 
 Ptr <ns3::LtePdcp> tempAddress1;
@@ -640,7 +640,7 @@ LtePdcp::printData(string filename, uint16_t SN) // sjkang
   if (count ==0){ tempAddress1 =this;count ++;}
   count ++;
 
-  if (tempAddress1==this)
+/*  if (tempAddress1==this)
   {
     if (filename == "RX_SN")
     {
@@ -677,7 +677,7 @@ LtePdcp::printData(string filename, uint16_t SN) // sjkang
       }
       OutFile4<<this<< "\t"<< Simulator::Now ().GetSeconds() << "\t"<< "Reordered SN " << "\t" << SN<< std::endl;
     }
-  }
+  }*/
 }
 
 void

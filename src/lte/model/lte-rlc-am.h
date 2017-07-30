@@ -85,6 +85,15 @@ private:
   uint32_t sumPacketSize;
   uint32_t lastSumPacketSize;
   std::map<Ptr<LteRlcAm>,Ptr<OutputStreamWrapper>>FileStremFromRlcAddress;
+
+  void AverageDelayTimer ();
+  double sumDelay;
+  int packetNum;
+  uint32_t splitTimerInterval;
+  uint32_t sumBufferSize;
+
+  bool isInitialized;
+
   /**
    * This method will schedule a timeout at WaitReplyTimeout interval
    * in the future, unless a timer is already running for the cache,

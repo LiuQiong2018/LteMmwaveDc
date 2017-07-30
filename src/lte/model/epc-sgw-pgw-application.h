@@ -153,25 +153,56 @@ public:
 
   void SetSplitAlgorithm (uint16_t splitAlgorithm); // woody
 
-  void RecvAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
-  int SplitAlgorithm (); // woody
-  void IsAssistInfoSink (); // woody
-////////////////////////////////////////////sjkang0601
-       double etha_AtMenbFromDelay, etha_AtSenbFromDelay; //sjkang
-    double etha_AtMenbFrom_Thr_,etha_AtSenbFrom_Thr_; //sjkang
-    double etha_AtMenbFromQueueSize,etha_AtSenbFromQueueSize; //sjkang
-    double targetDelay = 0.02; //sjkang
+  struct TeidInfo // woody
+  {
+    bool isInitialized = false;
+    uint16_t gtpu_SN;
+    LteRrcSap::AssistInfo info1X[3];
+    int lastDirection1X;
+    int countChunk;
+    double etha_AtMenbFromDelay, etha_AtSenbFromDelay; //sjkang
+    double etha_AtMenbFrom_Thr_, etha_AtSenbFrom_Thr_; //sjkang
+    double etha_AtMenbFromQueueSize, etha_AtSenbFromQueueSize; //sjkang
     double pastEthaAtMenbFromDelay, pastEthaAtSenbFromDelay;
     double pastEthaAtMenbFromQueueSize, pastEthaAtSenbFromQueuesize;
-    void UpdateEthas(); //sjkang
-	 double sigma = 0.01; //sjkang
-    double alpha =1/99.0; //sjkang
-   double targetQueueSize = 100000.0; //sjkang
+    double targetQueueSize = 100000.0; //sjkang
+
+    // for splitting algorithm 5, 6
+    int packetNum;
+    double ethaMenb;
+    double prevQueueSizeMenb, prevQueueSizeSenb;
+    double cumDataRateMenb, cumDataRateSenb;
+    double prevDelayMenb, prevDelaySenb;
+    double sumPacketSizeMenb, sumPacketSizeSenb; 
+  };
+
+  double beta = 1/10.0;
+
+  void RecvAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
+  int SplitAlgorithm (TeidInfo *teidInfo, uint32_t teid); // woody
+  void IsAssistInfoSink (); // woody
+  int splitTimerInterval = 10;
+  void SetSplitTimerInterval (int i);
+  void SetParameters (double a, double b);
+  void SplitTimer (TeidInfo *t, uint32_t teid); // woody
+
+////////////////////////////////////////////sjkang0601
+
+//    double etha_AtMenbFromDelay, etha_AtSenbFromDelay; //sjkang
+//    double etha_AtMenbFrom_Thr_,etha_AtSenbFrom_Thr_; //sjkang
+//    double etha_AtMenbFromQueueSize,etha_AtSenbFromQueueSize; //sjkang
+    double targetDelay = 0.02; //sjkang
+//    double pastEthaAtMenbFromDelay, pastEthaAtSenbFromDelay;
+//    double pastEthaAtMenbFromQueueSize, pastEthaAtSenbFromQueuesize;
+    void UpdateEthas(TeidInfo *teidInfo, uint32_t teid); //sjkang
+    double sigma = 0.01;//0.01; //sjkang
+    double alpha =1/99.0;//1/99.0; //sjkang
+//    double targetQueueSize = 100000.0; //sjkang
 private:
 
   bool m_isAssistInfoSink; // woody
   uint16_t m_splitAlgorithm; // woody
-  int m_lastDirection1X;
+//  int m_lastDirection1X;
 
   // S11 SAP SGW methods
   void DoCreateSessionRequest (EpcS11SapSgw::CreateSessionRequestMessage msg);
@@ -318,11 +349,6 @@ public:
   {
     Ipv4Address enbAddr;
     Ipv4Address sgwAddr;    
-  };
-
-  struct TeidInfo // woody
-  {
-    uint16_t gtpu_SN;
   };
 
   std::map<uint16_t, EnbInfo> m_enbInfoByCellId;

@@ -401,17 +401,18 @@ UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gt
       m_srb1->m_pdcp->SetDcType (dcType); // woody
       if (m_enableAssistInfo)
       {
+        LteRrcSap::AssistInfo *m_assistInfo = new LteRrcSap::AssistInfo;
         // woody
-        m_assistInfo.bearerId = bearerId;
-        m_assistInfo.is_enb = true;
+        m_assistInfo->bearerId = bearerId;
+        m_assistInfo->is_enb = true;
 
         pdcp->m_enbRrc = m_rrc;
-        pdcp->SetAssistInfoPtr(&m_assistInfo);
+        pdcp->SetAssistInfoPtr(m_assistInfo);
         rlc->IsEnbRlc();
         rlc->SetRrc(m_rrc, 0);
-        rlc->SetAssistInfoPtr(&m_assistInfo);
+        rlc->SetAssistInfoPtr(m_assistInfo);
 
-        m_rrc->SetAssistInfoPtr(&m_assistInfo);
+        m_rrc->SetAssistInfoPtr(m_assistInfo);
       }
     }
 
@@ -2874,7 +2875,7 @@ LteEnbRrc::SendAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
 
   if (m_isMenb) assistInfo.is_menb = true;
   else assistInfo.is_menb = false;
-
+//NS_LOG_UNCOND( Simulator::Now().GetSeconds() << "\tEnbRrc\t" << assistInfo.rlc_average_delay << "\t" << (unsigned) assistInfo.bearerId << "\t" << assistInfo.is_enb << "\t" << assistInfo.is_menb);
   if (m_assistInfoSinkEnb != 0) Simulator::Schedule (delay, &LteEnbRrc::RecvAssistInfo, m_assistInfoSinkEnb, assistInfo);
   else Simulator::Schedule (delay, &EpcSgwPgwApplication::RecvAssistInfo, m_assistInfoSinkPgw, assistInfo);
 }

@@ -295,12 +295,15 @@ main (int argc, char *argv[])
 	LogComponentEnable("TcpSocketBase", LOG_FUNCTION);*/
 //	LogComponentEnable("MmWaveChannelMatrix", LOG_FUNCTION);
 //	LogComponentEnable("MmWaveChannelRaytracing", LOG_FUNCTION);
-//	LogComponentEnable("MmWaveBeamforming", LOG_FUNCTION);
+	LogComponentEnable("MmWaveBeamforming", LOG_FUNCTION);
 //	LogComponentEnable("MmWave3gppChannel", LOG_FUNCTION);
+	LogComponentEnable("MmWave3gppPropagationLossModel", LOG_FUNCTION);
+	LogComponentEnable("MmWave3gppBuildingsPropagationLossModel", LOG_FUNCTION);
 //	LogComponentEnable("EpcTftClassifier", LOG_LEVEL_ALL);
 //	LogComponentEnable("Ipv4L3Protocol", LOG_FUNCTION);
 //	LogComponentEnable("TcpL4Protocol", LOG_FUNCTION);
 	LogComponentEnable("LtePdcp", LOG_INFO);
+	LogComponentEnable("TcpCubic", LOG_INFO);
 
 	bool enablePDCPReordering =true;
 	int nodeNum_t = 1;
@@ -321,6 +324,7 @@ main (int argc, char *argv[])
 	int splitTimerInterval = 10;
 	double alpha = 1/99.0;
 	double beta = 1/10.0;
+	int variable = 0;
 
 	std::string outputName;
 	uint8_t dcType;
@@ -329,7 +333,7 @@ main (int argc, char *argv[])
 
 	//The available channel scenarios are 'RMa', 'UMa', 'UMi-StreetCanyon', 'InH-OfficeMixed', 'InH-OfficeOpen', 'InH-ShoppingMall'
 	std::string scenario = "UMa";
-	std::string condition = "n";
+	std::string condition = "a";
 
 	CommandLine cmd;
 	cmd.AddValue("nodeNum", "Number of UEs", nodeNum_t);
@@ -348,6 +352,7 @@ main (int argc, char *argv[])
 	cmd.AddValue("TCP", "TCP protocol", protocol);
 	cmd.AddValue("alpha", "alpha value for averaging etha", alpha);
 	cmd.AddValue("beta", "beta value for averaging data rate", beta);
+	cmd.AddValue("variable", "variable", variable);
 
 	cmd.Parse(argc, argv);
 	nodeNum = (unsigned) nodeNum_t;
@@ -384,6 +389,9 @@ main (int argc, char *argv[])
 	Config::SetDefault ("ns3::TcpSocket::DelAckCount", UintegerValue (1));
 	Config::SetDefault ("ns3::TcpSocket::SndBufSize", UintegerValue (131072*200*40));
 	Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue (131072*200*40));
+	Config::SetDefault ("ns3::TcpCubic::HyStart", BooleanValue (false));
+	Config::SetDefault ("ns3::TcpCubic::C", DoubleValue (300.0));
+	Config::SetDefault ("ns3::TcpSocket::InitialSlowStartThreshold", UintegerValue (7000000));
 	if(protocol == "TcpNewReno")
 	{
 		Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TcpNewReno::GetTypeId ()));
@@ -439,13 +447,16 @@ main (int argc, char *argv[])
 
 	Config::SetDefault ("ns3::MmWave3gppChannel::UpdatePeriod", TimeValue (MilliSeconds (100))); // Set channel update period, 0 stands for no update.
 	Config::SetDefault ("ns3::MmWave3gppChannel::CellScan", BooleanValue(false)); // Set true to use cell scanning method, false to use the default power method.
-	Config::SetDefault ("ns3::MmWave3gppChannel::Blockage", BooleanValue(false)); // use blockage or not
+	Config::SetDefault ("ns3::MmWave3gppChannel::Blockage", BooleanValue(true)); // use blockage or not
 	Config::SetDefault ("ns3::MmWave3gppChannel::PortraitMode", BooleanValue(true)); // use blockage model with UT in portrait mode
-	Config::SetDefault ("ns3::MmWave3gppChannel::NumNonselfBlocking", IntegerValue(4)); // number of non-self blocking obstacles
+	Config::SetDefault ("ns3::MmWave3gppChannel::NumNonselfBlocking", IntegerValue(1)); // number of non-self blocking obstacles
 	Config::SetDefault ("ns3::MmWave3gppChannel::BlockerSpeed", DoubleValue(1)); // speed of non-self blocking obstacles
 	Config::SetDefault ("ns3::MmWavePhyMacCommon::NumHarqProcess", UintegerValue(100));
+        Config::SetDefault ("ns3::MmWaveBeamforming::LongTermUpdatePeriod", TimeValue (MilliSeconds (100.0)));
+	Config::SetDefault ("ns3::MmWave3gppBuildingsPropagationLossModel::UpdateCondition", BooleanValue(true)); // enable or disable the LOS/NLOS update when the UE moves
+	Config::SetDefault ("ns3::MmWave3gppBuildingsPropagationLossModel::Variable", UintegerValue((unsigned)variable));
 
-	double hBS = 0; //base station antenna height in meters;
+/*	double hBS = 0; //base station antenna height in meters;
 	double hUT = 0; //user antenna height in meters;
 	if(scenario.compare("RMa")==0)
 	{
@@ -472,7 +483,7 @@ main (int argc, char *argv[])
 		std::cout<<"Unkown scenario.\n";
 		return 1;
 	}
-
+*/
         NS_LOG_UNCOND("# Set LteHelper, mmwaveHelper, MmWavePointToPointEpcHelper");
 	Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
 	lteHelper->SetEnbDeviceAttribute ("DlBandwidth", UintegerValue (downlinkRb));
@@ -481,6 +492,7 @@ main (int argc, char *argv[])
 	lteHelper->Initialize();
 
 	Ptr<MmWaveHelper> mmwaveHelper = CreateObject<MmWaveHelper> ();
+//	mmwaveHelper->SetAttribute ("PathlossModel", StringValue ("ns3::BuildingsObstaclePropagationLossModel"));
 	mmwaveHelper->SetAttribute ("PathlossModel", StringValue ("ns3::MmWave3gppBuildingsPropagationLossModel"));
 	mmwaveHelper->SetAttribute ("ChannelModel", StringValue ("ns3::MmWave3gppChannel"));
 	mmwaveHelper->Initialize();
@@ -503,6 +515,12 @@ main (int argc, char *argv[])
 	internet.Install (remoteHostContainer);
 	Ipv4StaticRoutingHelper ipv4RoutingHelper;
 	Ipv4InterfaceContainer internetIpIfaces;
+
+/*                        Ptr < Building > building;
+                        building = Create<Building> ();
+                        building->SetBoundaries (Box (40.0,60.0,
+                                                                                0.0, 10.0,
+                                                                                0.0, 15.0));*/
 
 	for (uint16_t i = 0; i < nodeNum; i++)
 	{
@@ -553,27 +571,47 @@ main (int argc, char *argv[])
 
 	NS_LOG_UNCOND("# Mobility set up");
 	Ptr<ListPositionAllocator> enbPositionAlloc = CreateObject<ListPositionAllocator> ();
-	enbPositionAlloc->Add (Vector (0.0, 0.0, hBS));
+	enbPositionAlloc->Add (Vector (80.0, 0.0, 3.0));
 	MobilityHelper enbmobility;
 	enbmobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 	enbmobility.SetPositionAllocator(enbPositionAlloc);
 	enbmobility.Install (enbNodes);
-	enbmobility.Install (senbNodes);
 	BuildingsHelper::Install (enbNodes);
+
+	Ptr<ListPositionAllocator> senbPositionAlloc = CreateObject<ListPositionAllocator> ();
+	senbPositionAlloc->Add (Vector (0.0, 0.0, 3.0));
+	MobilityHelper senbmobility;
+	senbmobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+	senbmobility.SetPositionAllocator(senbPositionAlloc);
+	senbmobility.Install (senbNodes);
 	BuildingsHelper::Install (senbNodes);
 
 	MobilityHelper uemobility;
-	uemobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
+        uemobility.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
+	uemobility.Install (ueNodes);
+        ueNodes.Get (0)->GetObject<MobilityModel> ()->SetPosition (Vector (80, 0, 1.5));
+        ueNodes.Get (0)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 0, 0));
+
+/*        Simulator::Schedule (Seconds (2), &ChangeSpeed, ueNodes.Get (0), Vector (40, 0, 0));
+        Simulator::Schedule (Seconds (4), &ChangeSpeed, ueNodes.Get (0), Vector (-40, 0, 0));
+        Simulator::Schedule (Seconds (6), &ChangeSpeed, ueNodes.Get (0), Vector (0, 0, 0));*/
+/*
+        ueNodes.Get (0)->GetObject<MobilityModel> ()->SetPosition (Vector (80, -10, 1.5));
+        ueNodes.Get (0)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 0, 0));
+
+        Simulator::Schedule (Seconds (0), &ChangeSpeed, ueNodes.Get (0), Vector (0, 10, 0));
+        Simulator::Schedule (Seconds (8), &ChangeSpeed, ueNodes.Get (0), Vector (0, 0, 0));
+*/
+/*	uemobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 	Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator> ();
 	uePositionAlloc->Add (Vector (50, 0, hUT));
-	uemobility.SetPositionAllocator(uePositionAlloc);
+	uemobility.SetPositionAllocator(uePositionAlloc);*/
 /*	uemobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel", "Bounds", RectangleValue (Rectangle (-100, 100, -100, 100)));
 	Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator> ();
 	uePositionAlloc->Add (Vector (41.0, 10.0, hUT));
 	uePositionAlloc->Add (Vector (80.0, 20.0, hUT));
 	uePositionAlloc->Add (Vector (-100.0, 53.0, hUT));
 	uemobility.SetPositionAllocator(uePositionAlloc);*/
-	uemobility.Install (ueNodes);
 	BuildingsHelper::Install (ueNodes);
 
 	// Install LTE Devices to the nodes

@@ -2312,13 +2312,14 @@ PfFfMacScheduler::SetRrc (Ptr<LteEnbRrc> enbRrc){ // woody
 }
 
 /// sjkang
-std::ofstream OutFileOfEnb1Schedule("enb1_AverageThroughput.txt");
-std::ofstream OutFileOfEnb2Schedule("enb2_AverageThroughput.txt");
+//std::ofstream OutFileOfEnb1Schedule("enb1_AverageThroughput.txt");
+//std::ofstream OutFileOfEnb2Schedule("enb2_AverageThroughput.txt");
 int ccc=0;
 Ptr<PfFfMacScheduler> SchedulerAddressOfEnb1, SchedulerAddressOfEnb2;
 void
 PfFfMacScheduler::GetPfsFlowPerf_t(std::map <uint16_t, pfsFlowPerf_t>::iterator itStats){
 
+/*
 	  if (ccc ==0)
 	  {
 
@@ -2349,5 +2350,6 @@ PfFfMacScheduler::GetPfsFlowPerf_t(std::map <uint16_t, pfsFlowPerf_t>::iterator 
 
  //std::cout << this <<  "\t " << (*itStats).second.indicatorToUlandDl << "  " <<
 	//	 (*itStats).second.lastAveragedThroughput << std::endl;
+*/
 }
 }

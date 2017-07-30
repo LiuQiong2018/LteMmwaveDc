@@ -275,6 +275,10 @@ TcpCubic::Update (Ptr<TcpSocketState> tcb)
     }
   else
     {
+      // woody
+//      if (segCwnd == bicTarget) cnt = m_cntClamp;
+//      else cnt = std::max(segCwnd / (segCwnd - bicTarget), (unsigned)20);
+//      NS_LOG_DEBUG ("woody, target<cwnd. cnt=" << cnt);
       cnt = 100 * segCwnd;
     }
 

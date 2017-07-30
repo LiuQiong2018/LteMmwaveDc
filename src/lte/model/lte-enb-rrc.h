@@ -334,7 +334,7 @@ public:
 
   void SetDcCell (uint16_t dcCell); // woody3C
 
-  LteRrcSap::AssistInfo m_assistInfo; // woody
+//  LteRrcSap::AssistInfo m_assistInfo; // woody
 
   void RecvAssistInfo (LteRrcSap::AssistInfo assistInfo); // woody
 

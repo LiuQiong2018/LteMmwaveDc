@@ -65,6 +65,8 @@ private:
 	mutable channelConditionMap_t m_conditionMap;
 	bool m_updateCondition;
 	mutable Time m_prevTime;
+
+	uint32_t variable; // woody
 };
 
 }

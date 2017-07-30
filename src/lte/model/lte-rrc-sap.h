@@ -72,6 +72,9 @@ public:
     double rlc_tx_queue_hol_delay;
     double rlc_retx_queue_hol_delay;
     double averageThroughput;
+
+    double rlc_average_delay;
+    uint32_t rlc_average_queue;
   };
 
   // Constraint values

@@ -90,6 +90,12 @@ MmWave3gppBuildingsPropagationLossModel::GetTypeId (void)
 					BooleanValue (true),
 					MakeBooleanAccessor (&MmWave3gppBuildingsPropagationLossModel::m_updateCondition),
 					MakeBooleanChecker ())
+		.AddAttribute ("Variable", // woody
+					   "Var",
+					   UintegerValue (0),
+					   MakeUintegerAccessor (&MmWave3gppBuildingsPropagationLossModel::variable),
+					   MakeUintegerChecker<uint32_t> ())
+
 	;
 	return tid;
 }
@@ -104,12 +110,35 @@ MmWave3gppBuildingsPropagationLossModel::SetFrequency (double freq)
 	m_lambda = C / freq;
 }
 
+int stateChanged = 0;
+
 double
 MmWave3gppBuildingsPropagationLossModel::DoCalcRxPower (double txPowerDbm, Ptr<MobilityModel> a, Ptr<MobilityModel> b) const
 {
-	return txPowerDbm - GetLoss (a, b);
+// woody
+if (Now().GetSeconds() < 2 || Now().GetSeconds() > 5)
+{
+	if (stateChanged == 0)
+	{
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b));
+		stateChanged = 1;
+	}
+	return txPowerDbm - GetLoss (a,b);
+}
+else
+{
+	if (stateChanged == 1)
+	{
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable);
+		stateChanged = 0;
+	}
+
+	return txPowerDbm - GetLoss(a,b) - (double)variable;
 }
 
+//	return txPowerDbm - GetLoss (a, b);
+}
+//bool prevIsLos; // woody
 double
 MmWave3gppBuildingsPropagationLossModel::GetLoss (Ptr<MobilityModel> a, Ptr<MobilityModel> b) const
 {
@@ -147,7 +176,11 @@ MmWave3gppBuildingsPropagationLossModel::GetLoss (Ptr<MobilityModel> a, Ptr<Mobi
 				condition.m_channelCondition = 'n';
 				condition.m_shadowing = 0;
 			}
+/*if(intersect != prevIsLos){ // woody
+	prevIsLos = intersect;
+	NS_LOG_UNCOND(Now().GetSeconds() << " intersect status changed");
 
+}*/
 		}
 		else if(a1->IsIndoor () && b1->IsIndoor ())
 		{
@@ -330,6 +363,12 @@ MmWave3gppBuildingsPropagationLossModel::mmWaveNlosLoss (Ptr<MobilityModel> a, P
 bool
 MmWave3gppBuildingsPropagationLossModel::IsLineIntersectBuildings(Vector L1, Vector L2 ) const
 {
+// woody, temporarily implemented for link fluctuation
+/*	if (Now().GetSeconds() < 1) return false;
+	else if (Now().GetSeconds() < 2) return true;
+	else return false;*/
+
+
 	for (BuildingList::Iterator bit = BuildingList::Begin (); bit != BuildingList::End (); ++bit)
 	{
 		Box boundaries = (*bit)->GetBoundaries ();
@@ -366,6 +405,7 @@ MmWave3gppBuildingsPropagationLossModel::IsLineIntersectBuildings(Vector L1, Vec
 		return true;
 	}
 	return false;
+
 }
 
 void

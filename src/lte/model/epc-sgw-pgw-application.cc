@@ -131,6 +131,7 @@ EpcSgwPgwApplication::DoDispose ()
 }
 
   
+std::ofstream OutFile_forEtha1X ("etha_At_1X.txt");
 
 EpcSgwPgwApplication::EpcSgwPgwApplication (const Ptr<VirtualNetDevice> tunDevice, const Ptr<Socket> s1uSocket)
   : m_s1uSocket (s1uSocket),
@@ -142,6 +143,7 @@ EpcSgwPgwApplication::EpcSgwPgwApplication (const Ptr<VirtualNetDevice> tunDevic
   NS_LOG_FUNCTION (this << tunDevice << s1uSocket);
   m_s1uSocket->SetRecvCallback (MakeCallback (&EpcSgwPgwApplication::RecvFromS1uSocket, this));
   m_s11SapSgw = new MemberEpcS11SapSgw<EpcSgwPgwApplication> (this);
+  OutFile_forEtha1X << "time\tteid\tMenb_etha_delay\tSenb_etha_delay\tMenb_etha_Queue\tSenb_etha_Queue" << std::endl;
 }
 
   
@@ -156,7 +158,7 @@ EpcSgwPgwApplication::SetSplitAlgorithm (uint16_t splitAlgorithm) // woody
   m_splitAlgorithm = splitAlgorithm;
 }
 
-LteRrcSap::AssistInfo info1X[3];
+//LteRrcSap::AssistInfo info1X[3];
 
 void
 EpcSgwPgwApplication::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
@@ -169,54 +171,85 @@ EpcSgwPgwApplication::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo){ // wood
   else nodeNum = 2;
 
 //NS_LOG_UNCOND("nodeNum " << nodeNum << " pdcp_sn " << assistInfo.pdcp_sn << " pdcp_delay " << assistInfo.pdcp_delay << " rlc_avg_buffer " << assistInfo.rlc_avg_buffer << " rlc_tx_queue " << assistInfo.rlc_tx_queue << " rlc_retx_queue " << assistInfo.rlc_retx_queue << " rlc_tx_queue_hol_delay " << assistInfo.rlc_tx_queue_hol_delay << " rlc_retx_queue_hol_delay " << assistInfo.rlc_retx_queue_hol_delay );
-  info1X[nodeNum] = assistInfo;
+
+  std::map<uint32_t, TeidInfo>::iterator teidit = m_teidInfoMap.find (assistInfo.bearerId); // woody
+  NS_ASSERT_MSG (teidit != m_teidInfoMap.end (), "unknown TEID " << assistInfo.bearerId); // woody
+
+  teidit->second.info1X[nodeNum] = assistInfo;
+//NS_LOG_UNCOND(Simulator::Now().GetSeconds() << "\tSgwPgw\t" << nodeNum << "\t" << assistInfo.rlc_average_delay << "\t" << teidit->second.info1X[nodeNum].rlc_average_delay << "\t" << (unsigned) assistInfo.bearerId << "\t" << assistInfo.is_enb << "\t" << assistInfo.is_menb);
 
   return;
 }
+
 //double pre_QueueSize=0;
 bool ToSenb=false, ToMenb=false;
 int p1,p2;
+int ChunkSize = 50;
 
-std::ofstream OutFile_forEtha1X ("etha_At_1X.txt");
+std::ofstream OutFile_test ("test_algorithm.txt");
+
 void
-EpcSgwPgwApplication::UpdateEthas(){
+EpcSgwPgwApplication::UpdateEthas(TeidInfo *t, uint32_t teid){
 /// the split algorithm using RLC AM queuing delay
 	double delayAtMenb, delayAtSenb;//sjkang
-	delayAtMenb = info1X[0].rlc_tx_queue_hol_delay + info1X[0].rlc_retx_queue_hol_delay;
-	delayAtSenb = info1X[1].rlc_tx_queue_hol_delay + info1X[1].rlc_retx_queue_hol_delay;
-	double DelayDifferenceAtMenb = std::max (targetDelay -delayAtMenb,sigma);
-	double DelayDifferenceAtSenb =std::max (targetDelay -delayAtSenb,sigma);
+	delayAtMenb = t->info1X[0].rlc_tx_queue_hol_delay;// + t->info1X[0].rlc_retx_queue_hol_delay;
+	delayAtSenb = t->info1X[1].rlc_tx_queue_hol_delay;// + t->info1X[1].rlc_retx_queue_hol_delay;
+	double DelayDifferenceAtMenb = std::max (targetDelay - delayAtMenb,sigma);
+	double DelayDifferenceAtSenb = std::max (targetDelay - delayAtSenb,sigma);
 
-	etha_AtMenbFromDelay= DelayDifferenceAtMenb / (DelayDifferenceAtMenb+DelayDifferenceAtSenb);
-	etha_AtSenbFromDelay = DelayDifferenceAtSenb / (DelayDifferenceAtMenb+DelayDifferenceAtSenb);
-	pastEthaAtMenbFromDelay = (1-alpha)*pastEthaAtMenbFromDelay + alpha*etha_AtMenbFromDelay;
-	pastEthaAtSenbFromDelay = (1-alpha)*pastEthaAtSenbFromDelay +alpha* etha_AtSenbFromDelay;
+	t->etha_AtMenbFromDelay= DelayDifferenceAtMenb / (DelayDifferenceAtMenb+DelayDifferenceAtSenb);
+	t->etha_AtSenbFromDelay = DelayDifferenceAtSenb / (DelayDifferenceAtMenb+DelayDifferenceAtSenb);
+//	t->pastEthaAtMenbFromDelay = (1-alpha)*t->pastEthaAtMenbFromDelay + alpha*t->etha_AtMenbFromDelay;
+//	t->pastEthaAtSenbFromDelay = (1-alpha)*t->pastEthaAtSenbFromDelay + alpha*t->etha_AtSenbFromDelay;
+	t->pastEthaAtMenbFromDelay = t->pastEthaAtMenbFromDelay * (alpha * 2 * t->etha_AtMenbFromDelay);
+	t->pastEthaAtSenbFromDelay = 1 - t->pastEthaAtMenbFromDelay;
+
+
         //targetDelay = std::max(delayAtMenb, delayAtSenb);    
         //targetDelay += targetDelay*0.2;
-	double ThroughputAtSenb = info1X[1].averageThroughput;
-        double ThroughputAtMenb = info1X[0].averageThroughput;
+
+/*
+	double ThroughputAtSenb = t->info1X[1].averageThroughput;
+        double ThroughputAtMenb = t->info1X[0].averageThroughput;
 	double targetThroughput_AtMenb = 10000000;
 	double targetThroughput_AtSenb = 9000000;
 	double theSumOfThroughputRatio = targetThroughput_AtMenb/ThroughputAtMenb +targetThroughput_AtSenb/ThroughputAtSenb;
 
-		 etha_AtMenbFrom_Thr_= (targetThroughput_AtMenb/ThroughputAtMenb)/theSumOfThroughputRatio;
-		etha_AtSenbFrom_Thr_=(targetThroughput_AtSenb/ThroughputAtSenb)/theSumOfThroughputRatio;
-
+	t->etha_AtMenbFrom_Thr_ = (targetThroughput_AtMenb/ThroughputAtMenb) / theSumOfThroughputRatio;
+	t->etha_AtSenbFrom_Thr_ = (targetThroughput_AtSenb/ThroughputAtSenb) / theSumOfThroughputRatio;
+*/
 
 	 double queueSizeAtMenb, queueSizeAtSenb;
- 	 queueSizeAtMenb = info1X[0].rlc_retx_queue + info1X[0].rlc_tx_queue;
- 	 queueSizeAtSenb = info1X[1].rlc_retx_queue +info1X[1].rlc_tx_queue;
+ 	 queueSizeAtMenb = t->info1X[0].rlc_retx_queue + t->info1X[0].rlc_tx_queue;
+	 queueSizeAtSenb = t->info1X[1].rlc_retx_queue + t->info1X[1].rlc_tx_queue;
 
- 	double QueueDifferenceAtMenb = std::max (targetQueueSize - queueSizeAtMenb, sigma*1000);
- 	double QueueDifferenceAtSenb = std::max (targetQueueSize - queueSizeAtSenb, sigma*1000);
+ 	double QueueDifferenceAtMenb = std::max (t->targetQueueSize - queueSizeAtMenb, sigma*1000);
+ 	double QueueDifferenceAtSenb = std::max (t->targetQueueSize - queueSizeAtSenb, sigma*1000);
 
- 	etha_AtMenbFromQueueSize = QueueDifferenceAtMenb /(QueueDifferenceAtMenb+QueueDifferenceAtSenb);
- 	etha_AtSenbFromQueueSize = QueueDifferenceAtSenb /(QueueDifferenceAtMenb+QueueDifferenceAtSenb);
-    pastEthaAtMenbFromQueueSize = (1-alpha)*pastEthaAtMenbFromQueueSize+alpha * etha_AtMenbFromQueueSize;
-    pastEthaAtSenbFromQueuesize = (1-alpha)*pastEthaAtSenbFromQueuesize+alpha* etha_AtSenbFromQueueSize;
-       targetQueueSize = std::max(queueSizeAtMenb, queueSizeAtSenb);
-	targetQueueSize += targetQueueSize*0.2;
-	//targetQueueSize = std::max(2.5*t_targetQueueSize - 1.5*pre_QueueSize,t_targetQueueSize+t_targetQueueSize*0.2); 
+ 	t->etha_AtMenbFromQueueSize = QueueDifferenceAtMenb / (QueueDifferenceAtMenb+QueueDifferenceAtSenb);
+ 	t->etha_AtSenbFromQueueSize = QueueDifferenceAtSenb / (QueueDifferenceAtMenb+QueueDifferenceAtSenb);
+	t->pastEthaAtMenbFromQueueSize = (1-alpha)*t->pastEthaAtMenbFromQueueSize + alpha*t->etha_AtMenbFromQueueSize;
+	t->pastEthaAtSenbFromQueuesize = (1-alpha)*t->pastEthaAtSenbFromQueuesize + alpha*t->etha_AtSenbFromQueueSize;
+	t->targetQueueSize = std::max(queueSizeAtMenb, queueSizeAtSenb);
+	t->targetQueueSize += t->targetQueueSize*0.2;
+
+OutFile_test << Simulator::Now().GetSeconds()<< "\t"
+<< teid << "\t"
+<< delayAtMenb << "\t"
+<< delayAtSenb << "\t"
+<< DelayDifferenceAtMenb << "\t"
+<< DelayDifferenceAtSenb << "\t"
+<< t->etha_AtMenbFromDelay << "\t"
+<< t->etha_AtSenbFromDelay << "\t"
+<< queueSizeAtMenb << "\t"
+<< queueSizeAtSenb << "\t"
+<< QueueDifferenceAtMenb << "\t"
+<< QueueDifferenceAtSenb << "\t"
+<< t->etha_AtMenbFromQueueSize << "\t"
+<< t->etha_AtSenbFromQueueSize << "\t"
+<< t->targetQueueSize << std::endl;
+
+//targetQueueSize = std::max(2.5*t_targetQueueSize - 1.5*pre_QueueSize,t_targetQueueSize+t_targetQueueSize*0.2); 
         //pre_QueueSize = t_targetQueueSize; 
     //  std::cout << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
            /* if ( delayAtSenb - delayAtMenb > 1.0 && queueSizeAtMenb !=0 && queueSizeAtSenb!=0){
@@ -231,11 +264,11 @@ EpcSgwPgwApplication::UpdateEthas(){
    
                 }
         else*/ 
-	if ( info1X[0].rlc_retx_queue > 10000 ) {
+	if (t->info1X[0].rlc_retx_queue > 10000 ) {
 			ToSenb=true;
 			ToMenb= false;
 		}
-	else if (info1X[1].rlc_retx_queue >10000) {
+	else if (t->info1X[1].rlc_retx_queue > 10000) {
 		ToMenb= true;        
 		ToSenb=false ; 
 		}
@@ -243,14 +276,133 @@ EpcSgwPgwApplication::UpdateEthas(){
                 ToSenb=false;
                 ToMenb=false;
         }
-  	OutFile_forEtha1X << Simulator::Now().GetSeconds()<< "\t" << " Menb_etha_delay" << "\t" << pastEthaAtMenbFromDelay << "\t" << "Senb_etha_delay" <<"\t " 
-       <<pastEthaAtSenbFromDelay <<"\t"<<"Menb_etha_Queue" <<"\t" <<  pastEthaAtMenbFromQueueSize <<"\t  " << "Senb_etha_Queue" << "\t"<<
-                       pastEthaAtSenbFromQueuesize << std::endl;
+  	OutFile_forEtha1X << Simulator::Now().GetSeconds()<< "\t"
+		<< teid << "\t"
+		<< t->pastEthaAtMenbFromDelay << "\t"
+		<< t->pastEthaAtSenbFromDelay << "\t"
+		<< t->pastEthaAtMenbFromQueueSize << "\t"
+		<< t->pastEthaAtSenbFromQueuesize
+		<< std::endl;
   		//	<< pastEthaAtSenbFromDelay << "\t" << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
 }
-int count_forSplitting_At_SgwPgw=0;
+
+//int count_forSplitting_At_SgwPgw=0;
+
+std::ofstream OutFile_test5 ("test_algorithm5.txt");
+std::ofstream OutFile_test6 ("test_algorithm6.txt");
+
+void
+EpcSgwPgwApplication::SplitTimer (TeidInfo *t, uint32_t teid) // woody
+{
+	NS_LOG_FUNCTION (this);
+	
+	if (m_splitAlgorithm == 6)
+	{
+		double queueSizeMenb, queueSizeSenb;
+		queueSizeMenb = t->info1X[0].rlc_average_queue;
+		queueSizeSenb = t->info1X[1].rlc_average_queue;
+
+		if (queueSizeMenb == 0 && queueSizeSenb == 0 && t->prevQueueSizeMenb == 0 && t->prevQueueSizeSenb == 0 && t->packetNum == 0)
+		{
+		}
+		else
+		{
+
+		double dataRateMenb, dataRateSenb;
+		dataRateMenb = std::max(t->prevQueueSizeMenb - queueSizeMenb + t->sumPacketSizeMenb, 0.0);
+		dataRateSenb = std::max(t->prevQueueSizeSenb - queueSizeSenb + t->sumPacketSizeSenb, 0.0);
+		t->cumDataRateMenb = (1-beta)*t->cumDataRateMenb + beta*dataRateMenb;
+		t->cumDataRateSenb = (1-beta)*t->cumDataRateSenb + beta*dataRateSenb;
+
+		double tempt, nextEthaMenb;
+		tempt = std::max(t->packetNum * 1400.0 * (t->cumDataRateMenb + t->cumDataRateSenb), 0.000001);
+		nextEthaMenb = std::max(std::min(((t->cumDataRateMenb * (queueSizeSenb + (t->packetNum * 1400.0))) - (t->cumDataRateSenb * queueSizeMenb))
+			/ tempt, 1.0), 0.02);
+/*	
+		double dataRateMenb, dataRateSenb;
+		dataRateMenb = std::max(t->prevQueueSizeMenb - queueSizeMenb + (t->ethaMenb * t->packetNum), 0.0);
+		dataRateSenb = std::max(t->prevQueueSizeSenb - queueSizeSenb + ((1 - t->ethaMenb) * t->packetNum), 0.0);
+
+		double tempt, nextEthaMenb;
+		tempt = std::max(t->packetNum * (dataRateMenb + dataRateSenb), 0.000001);
+		nextEthaMenb = std::max(std::min(((dataRateMenb * (queueSizeSenb + t->packetNum)) - (dataRateSenb * queueSizeMenb))
+			/ tempt, 1.0), 0.0);
+*/
+		t->ethaMenb = (1-alpha)*t->ethaMenb + alpha*nextEthaMenb;
+		t->prevQueueSizeMenb = queueSizeMenb;
+		t->prevQueueSizeSenb = queueSizeSenb;
+
+OutFile_test6
+	<< Simulator::Now().GetSeconds() << "\t"
+	<< teid << "\t"
+	<< queueSizeMenb << "\t"
+	<< queueSizeSenb << "\t"
+	<< dataRateMenb << "\t"
+	<< dataRateSenb << "\t"
+	<< t->cumDataRateMenb << "\t"
+	<< t->cumDataRateSenb << "\t"
+	<< t->packetNum << "\t"
+	<< nextEthaMenb << "\t"
+	<< t->ethaMenb << "\t"
+	<< t->sumPacketSizeMenb << "\t"
+	<< t->sumPacketSizeSenb <<  std::endl;
+
+		}
+	}
+	else if (m_splitAlgorithm == 5)
+	{
+//NS_LOG_UNCOND(Simulator::Now().GetSeconds() << "\t" << teid << "\t" << t->info1X[0].rlc_average_delay << "\t" << this);
+		double delayMenb, delaySenb;
+		delayMenb = t->info1X[0].rlc_average_delay;
+		delaySenb = t->info1X[1].rlc_average_delay;
+
+		double temptM, temptS;
+		temptM = std::max(delayMenb - t->prevDelayMenb + splitTimerInterval, 0.000001);
+		temptS = std::max(delaySenb - t->prevDelaySenb + splitTimerInterval, 0.000001);
+		double dataRateMenb, dataRateSenb;
+		dataRateMenb = t->ethaMenb * t->packetNum * splitTimerInterval / temptM;
+		dataRateSenb = (1 - t->ethaMenb) * t->packetNum * splitTimerInterval / temptS;
+
+		double nextEthaMenb;
+		nextEthaMenb = (delaySenb - delayMenb + (t->packetNum * splitTimerInterval / dataRateSenb)) / t->packetNum / splitTimerInterval / ((1 / dataRateMenb) + (1 / dataRateSenb));
+		t->ethaMenb = (1-alpha)*t->ethaMenb + alpha*nextEthaMenb;
+		t->prevDelayMenb = delayMenb;
+		t->prevDelaySenb = delaySenb;
+
+OutFile_test5
+	<< Simulator::Now().GetSeconds() << "\t"
+	<< teid << "\t"
+	<< delayMenb << "\t"
+	<< delaySenb << "\t"
+	<< dataRateMenb << "\t"
+	<< dataRateSenb << "\t"
+	<< t->packetNum << "\t"
+	<< nextEthaMenb << "\t"
+	<< t->ethaMenb << std::endl;
+
+	}
+
+	t->packetNum = 0;
+	t->sumPacketSizeMenb = 0;
+	t->sumPacketSizeSenb = 0;
+	Simulator::Schedule (MilliSeconds (splitTimerInterval), &EpcSgwPgwApplication::SplitTimer, this, t, teid);
+}
+
+void
+EpcSgwPgwApplication::SetSplitTimerInterval (int i) // woody
+{
+  splitTimerInterval = i;
+}
+
+void
+EpcSgwPgwApplication::SetParameters (double a, double b) // woody
+{
+  alpha = a;
+  beta = b;
+}
+
 int
-EpcSgwPgwApplication::SplitAlgorithm ()
+EpcSgwPgwApplication::SplitAlgorithm (TeidInfo *teidInfo, uint32_t teid) // woody
 {
   NS_LOG_FUNCTION (this);
 /*
@@ -260,7 +412,39 @@ EpcSgwPgwApplication::SplitAlgorithm ()
 
 */
 
- int size =50;
+  if (teidInfo->isInitialized == false)
+  {
+    teidInfo->countChunk = 0;
+    teidInfo->etha_AtMenbFromDelay = 0.5;
+    teidInfo->etha_AtSenbFromDelay = 0.5;
+    teidInfo->etha_AtMenbFromQueueSize = 0.5;
+    teidInfo->etha_AtSenbFromQueueSize = 0.5;
+    teidInfo->pastEthaAtMenbFromDelay = 0.5;
+    teidInfo->pastEthaAtSenbFromDelay = 0.5;
+    teidInfo->pastEthaAtMenbFromQueueSize = 0.5;
+    teidInfo->pastEthaAtSenbFromQueuesize = 0.5;
+    teidInfo->isInitialized = true;
+/*    if (m_splitAlgorithm == 6 || m_splitAlgorithm == 5)
+    {
+      Simulator::Schedule (MilliSeconds (splitTimerInterval), &EpcSgwPgwApplication::SplitTimer, this, teidInfo, teid);
+    }*/
+    Simulator::Schedule (MilliSeconds (splitTimerInterval), &EpcSgwPgwApplication::SplitTimer, this, teidInfo, teid);
+    teidInfo->packetNum = 0;
+    teidInfo->ethaMenb = 0.5;
+    teidInfo->prevQueueSizeMenb = 0;
+    teidInfo->prevQueueSizeSenb = 0;
+    teidInfo->prevDelayMenb = 0;
+    teidInfo->prevDelaySenb = 0;
+    teidInfo->info1X[0].rlc_average_delay = 0;
+    teidInfo->info1X[1].rlc_average_delay = 0;
+    teidInfo->info1X[0].rlc_average_queue = 0;
+    teidInfo->info1X[1].rlc_average_queue = 0;
+    teidInfo->cumDataRateMenb = 0;
+    teidInfo->cumDataRateSenb = 0;
+    teidInfo->sumPacketSizeMenb = 0;
+    teidInfo->sumPacketSizeSenb = 0;
+  }
+
   // return 0 for Tx through MeNB &  return 1 for Tx through SeNB
   switch (m_splitAlgorithm)
   {
@@ -273,27 +457,27 @@ EpcSgwPgwApplication::SplitAlgorithm ()
       break;
 
     case 2:
-      if (m_lastDirection1X == 0) return 1;
+      if (teidInfo->lastDirection1X == 0) return 1;
       else return 0;
       break;
     case 3:
- 		if (count_forSplitting_At_SgwPgw > size*(pastEthaAtSenbFromDelay+pastEthaAtMenbFromDelay)){
-    	        	UpdateEthas();
+ 		if (teidInfo->countChunk > ChunkSize * (teidInfo->pastEthaAtSenbFromDelay + teidInfo->pastEthaAtMenbFromDelay)){
+    	        	UpdateEthas(teidInfo, teid);
 
-    	        	count_forSplitting_At_SgwPgw =0;
-    	        	 return 0;
+    	        	teidInfo->countChunk = 0;
+    	        	return 0;
     	        }
-    	        else if (count_forSplitting_At_SgwPgw < pastEthaAtMenbFromDelay*size)
+    	        else if (teidInfo->countChunk < teidInfo->pastEthaAtMenbFromDelay * ChunkSize)
     	        {
 
-    	        	count_forSplitting_At_SgwPgw++;
+    	        	teidInfo->countChunk++;
     	        	return 0;
 
     	        }
-    	        else if (count_forSplitting_At_SgwPgw >= pastEthaAtMenbFromDelay *size
-    	        		&& count_forSplitting_At_SgwPgw <= size*(pastEthaAtMenbFromDelay+pastEthaAtSenbFromDelay))
+    	        else if (teidInfo->countChunk >= teidInfo->pastEthaAtMenbFromDelay * ChunkSize
+    	        		&& teidInfo->countChunk <= ChunkSize * (teidInfo->pastEthaAtMenbFromDelay + teidInfo->pastEthaAtSenbFromDelay))
     	        {
-    	          	count_forSplitting_At_SgwPgw++;
+    	          	teidInfo->countChunk++;
     	        	return 1;
     	        }
     break;
@@ -309,27 +493,54 @@ EpcSgwPgwApplication::SplitAlgorithm ()
                 }
  	 else*/ 
 	{		
-		if (count_forSplitting_At_SgwPgw > size*(pastEthaAtSenbFromQueuesize+pastEthaAtMenbFromQueueSize)){
-  	        	UpdateEthas();
+		if (teidInfo->countChunk > ChunkSize * (teidInfo->pastEthaAtSenbFromQueuesize + teidInfo->pastEthaAtMenbFromQueueSize)){
+  	        	UpdateEthas(teidInfo, teid);
 
-  	        	count_forSplitting_At_SgwPgw =0;
-  	        	 return 0;
+  	        	teidInfo->countChunk =0;
+  	        	return 0;
   	        }
-  	        else if (count_forSplitting_At_SgwPgw < pastEthaAtMenbFromQueueSize*size)
+  	        else if (teidInfo->countChunk < teidInfo->pastEthaAtMenbFromQueueSize * ChunkSize)
   	        {
 
-  	        	count_forSplitting_At_SgwPgw++;
+  	        	teidInfo->countChunk++;
   	        	return 0;
 
   	        }
-  	        else if (count_forSplitting_At_SgwPgw >= pastEthaAtMenbFromQueueSize *size
-  	        		&& count_forSplitting_At_SgwPgw <= size*(pastEthaAtMenbFromQueueSize+pastEthaAtSenbFromQueuesize))
+  	        else if (teidInfo->countChunk >= teidInfo->pastEthaAtMenbFromQueueSize * ChunkSize
+  	        		&& teidInfo->countChunk <= ChunkSize * (teidInfo->pastEthaAtMenbFromQueueSize + teidInfo->pastEthaAtSenbFromQueuesize))
   	        {
-  	          	count_forSplitting_At_SgwPgw++;
+  	          	teidInfo->countChunk++;
   	        	return 1;
   	        }
 	}
   	        break;
+    case 5:
+      teidInfo->packetNum++;
+      teidInfo->countChunk++;
+
+      if (teidInfo->countChunk < teidInfo->ethaMenb * ChunkSize) return 0;
+      else if ((teidInfo->countChunk >= teidInfo->ethaMenb * ChunkSize) && (teidInfo->countChunk <= ChunkSize)) return 1;
+      else
+      {
+        teidInfo->countChunk = 0;
+        return 1;
+      }
+
+      break;
+
+   case 6:
+      teidInfo->packetNum++;
+      teidInfo->countChunk++;
+
+      if (teidInfo->countChunk < (1 - teidInfo->ethaMenb) * ChunkSize) return 1;
+      else if ((teidInfo->countChunk >= (1 - teidInfo->ethaMenb) * ChunkSize) && (teidInfo->countChunk <= ChunkSize)) return 0;
+      else
+      {
+        teidInfo->countChunk = 1;
+        return 1;
+      }
+
+      break;
 
   }
   return -1;
@@ -397,7 +608,10 @@ NS_LOG_UNCOND ("no matching bearer for this packet");
             }
           }
           else if(it->second->dcType == 3){
-            int t_splitter = SplitAlgorithm();
+            std::map<uint32_t, TeidInfo>::iterator teidit = m_teidInfoMap.find (teid);
+            NS_ASSERT_MSG (teidit != m_teidInfoMap.end (), "unknown TEID " << teid);
+
+            int t_splitter = SplitAlgorithm(&teidit->second, teid);
 
             std::map<uint32_t, Ipv4Address>::iterator senbAddrIt = m_dcEnbAddrByTeidMap.find (teid);
             Ipv4Address senbAddr = senbAddrIt->second;
@@ -405,15 +619,18 @@ NS_LOG_UNCOND ("no matching bearer for this packet");
 
             if (t_splitter == 1){
               NS_LOG_INFO ("***SgwPgw send to SeNB " << senbAddr << " with teid " << teid);
-              m_lastDirection1X = 1;
+              teidit->second.lastDirection1X = 1;
+              teidit->second.sumPacketSizeSenb += packet->GetSize();
               SendToS1uSocket (packet, senbAddr, teid);
             }
             else if (t_splitter == 0) {
               NS_LOG_INFO ("***SgwPgw send to MeNB " << enbAddr << " with teid " << teid);
-              m_lastDirection1X = 0;
+              teidit->second.lastDirection1X = 0;
+              teidit->second.sumPacketSizeMenb += packet->GetSize();
               SendToS1uSocket (packet, enbAddr, teid);
             }
             else NS_FATAL_ERROR ("unknwon t_splitter value");
+
           }
           else NS_FATAL_ERROR("Unimplemented DC type");
 
