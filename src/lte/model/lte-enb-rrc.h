@@ -108,16 +108,31 @@ protected:
 public: 
   static TypeId GetTypeId (void);
 
-    double etha_AtMenbFromDelay, etha_AtSenbFromDelay; //sjkang
-    double etha_AtMenbFrom_Thr_,etha_AtSenbFrom_Thr_; //sjkang
-    double etha_AtMenbFromQueueSize,etha_AtSenbFromQueueSize; //sjkang
-    const double targetDelay = 0.01; //sjkang
-    double pastEthaAtMenbFromDelay, pastEthaAtSenbFromDelay;
-    double pastEthaAtMenbFromQueueSize, pastEthaAtSenbFromQueuesize;
-    void UpdateEthas(); //sjkang
-	 double sigma = 0.01; //sjkang
-	double alpha =1/99.0; //sjkang
-	double targetQueueSize = 89500.0; // sjkang
+  //sjkang
+  double etha_AtMenbFromDelay, etha_AtSenbFromDelay;
+  double etha_AtMenbFrom_Thr_,etha_AtSenbFrom_Thr_;
+  double etha_AtMenbFromQueueSize,etha_AtSenbFromQueueSize;
+  const double targetDelay = 0.01;
+  double pastEthaAtMenbFromDelay, pastEthaAtSenbFromDelay;
+  double pastEthaAtMenbFromQueueSize, pastEthaAtSenbFromQueuesize;
+  void UpdateEthas();
+  double sigma = 0.01;
+  double alpha = 0.1;
+  double targetQueueSize = 89500.0;
+
+  // woody
+  double beta = 1/10.0;
+  int m_splitTimerInterval = 10;
+  bool m_splitInitialized = false; 
+  double m_sumPacketSizeMenb, m_sumPacketSizeSenb;
+  double m_packetNum, m_countChunk;
+  double m_ethaMenb;
+  int m_chunkSize = 50;
+  double m_prevQueueSizeMenb, m_prevQueueSizeSenb;
+  double m_cumDataRateMenb, m_cumDataRateSenb;
+
+  void SplitTimer ();
+
   /** 
    * Set the identifiers of the source eNB for the case where a UE
    * joins the current eNB as part of a handover procedure 

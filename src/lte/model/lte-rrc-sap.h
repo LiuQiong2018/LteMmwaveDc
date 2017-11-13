@@ -75,6 +75,8 @@ public:
 
     double rlc_average_delay;
     uint32_t rlc_average_queue;
+
+    uint32_t data_rate;
   };
 
   // Constraint values

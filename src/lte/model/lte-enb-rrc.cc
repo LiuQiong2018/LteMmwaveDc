@@ -311,6 +311,11 @@ TypeId UeManager::GetTypeId (void)
                    UintegerValue (2),
                    MakeUintegerAccessor (&UeManager::m_splitAlgorithm),
                    MakeUintegerChecker<uint16_t> ())
+    .AddAttribute ("SplitTimerInterval", "splitTimerInterval", // woody
+                   UintegerValue (10),
+                   MakeUintegerAccessor (&UeManager::m_splitTimerInterval),
+                   MakeUintegerChecker<uint16_t> ())
+
     .AddTraceSource ("StateTransition",
                      "fired upon every UE state transition seen by the "
                      "UeManager at the eNB RRC",
@@ -713,7 +718,7 @@ UeManager::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo) // woody
   return;
 }
 
-std::ofstream OutFile_forEtha ("etha.txt");
+//std::ofstream OutFile_forEtha ("Trace_etha.txt");
 void
 UeManager::UpdateEthas(){
 	/// the split algorithm using RLC AM queuing delay
@@ -752,13 +757,88 @@ UeManager::UpdateEthas(){
     pastEthaAtSenbFromQueuesize = (1-alpha)*pastEthaAtSenbFromQueuesize+alpha* etha_AtSenbFromQueueSize;
     //  std::cout << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
 
-  	OutFile_forEtha << Simulator::Now().GetSeconds()<< "\t" << " Menb_etha_delay" << "\t" << pastEthaAtMenbFromDelay << "\t" << "Senb_etha_delay" <<"\t " 
-       <<pastEthaAtSenbFromDelay <<"\t"<<"Menb_etha_Queue" <<"\t" <<  pastEthaAtMenbFromQueueSize <<"\t  " << "Senb_etha_Queue" << "\t"<<
-                       pastEthaAtSenbFromQueuesize << std::endl;
-  		//	<< pastEthaAtSenbFromDelay << "\t" << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
+/*OutFile_forEtha << Simulator::Now().GetSeconds() << "\t"
+	<< "Menb_etha_delay" << "\t" << pastEthaAtMenbFromDelay << "\t"
+	<< "Senb_etha_delay" << "\t" << pastEthaAtSenbFromDelay << "\t"
+	<< "Menb_etha_Queue" << "\t" << pastEthaAtMenbFromQueueSize << "\t"
+	<< "Senb_etha_Queue" << "\t" << pastEthaAtSenbFromQueuesize << "\t"
+	<< pastEthaAtSenbFromDelay << "\t" << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;*/
 }
 
-int count_forSplitting=0;
+std::ofstream OutFile_algm6 ("Trace_algorithm6.txt");
+
+void
+UeManager::SplitTimer () // woody
+{
+	NS_LOG_FUNCTION (this);
+
+	if (m_splitAlgorithm == 6)
+	{
+		double queueSizeMenb, queueSizeSenb;
+		queueSizeMenb = info[0].rlc_tx_queue;//rlc_average_queue;
+                queueSizeSenb = info[1].rlc_tx_queue;//rlc_average_queue;
+
+		if (queueSizeMenb == 0 && queueSizeSenb == 0 && m_prevQueueSizeMenb == 0 && m_prevQueueSizeSenb == 0 && m_packetNum == 0) { }
+		else
+		{
+			double dataRateMenb, dataRateSenb;
+//			dataRateMenb = info[0].data_rate;
+//			dataRateSenb = info[1].data_rate;
+			dataRateMenb = std::max(m_prevQueueSizeMenb - queueSizeMenb + m_sumPacketSizeMenb, 0.0);
+			dataRateSenb = std::max(m_prevQueueSizeSenb - queueSizeSenb + m_sumPacketSizeSenb, 0.0);
+			m_cumDataRateMenb = (1-beta)*m_cumDataRateMenb + beta*info[0].data_rate;//dataRateMenb;
+			m_cumDataRateSenb = (1-beta)*m_cumDataRateSenb + beta*info[1].data_rate;//dataRateSenb;
+
+			double tempt, nextEthaMenb;
+			tempt = std::max(m_packetNum * 1400.0 * (m_cumDataRateMenb + m_cumDataRateSenb), 0.000001);
+			nextEthaMenb = std::max(std::min(((m_cumDataRateMenb * (queueSizeSenb + (m_packetNum * 1400.0))) - (m_cumDataRateSenb * queueSizeMenb)) / tempt, 1.0), 0.02);
+/*      
+                double dataRateMenb, dataRateSenb;
+                dataRateMenb = std::max(t->prevQueueSizeMenb - queueSizeMenb + (t->ethaMenb * t->packetNum), 0.0);
+                dataRateSenb = std::max(t->prevQueueSizeSenb - queueSizeSenb + ((1 - t->ethaMenb) * t->packetNum), 0.0);
+
+                double tempt, nextEthaMenb;
+                tempt = std::max(t->packetNum * (dataRateMenb + dataRateSenb), 0.000001);
+                nextEthaMenb = std::max(std::min(((dataRateMenb * (queueSizeSenb + t->packetNum)) - (dataRateSenb * queueSizeMenb))
+                        / tempt, 1.0), 0.0);
+*/
+			m_ethaMenb = (1-alpha)*m_ethaMenb + alpha*nextEthaMenb;
+			m_prevQueueSizeMenb = queueSizeMenb;
+			m_prevQueueSizeSenb = queueSizeSenb;
+
+OutFile_algm6
+      << Simulator::Now().GetSeconds() << "\t"
+//      << teid << "\t"
+      << queueSizeMenb << "\t"
+      << queueSizeSenb << "\t"
+      << dataRateMenb << "\t"
+      << dataRateSenb << "\t"
+      << m_cumDataRateMenb << "\t"
+      << m_cumDataRateSenb << "\t"
+      << m_packetNum << "\t"
+      << nextEthaMenb << "\t"
+      << m_ethaMenb << "\t"
+      << m_sumPacketSizeMenb << "\t"
+      << m_sumPacketSizeSenb << "\t"
+      << info[0].data_rate << "\t"
+      << info[1].data_rate << "\t"
+      << std::endl;
+		}
+	}
+	else if (m_splitAlgorithm == 5)
+	{
+		NS_FATAL_ERROR("split algorithm 5 is not implemented for 3C architecture");
+	}
+	m_packetNum = 0;
+	m_sumPacketSizeMenb = 0;
+	m_sumPacketSizeSenb = 0;
+	Simulator::Schedule (MilliSeconds (m_splitTimerInterval), &UeManager::SplitTimer, this);
+}
+
+
+
+int count_forSplitting = 0;
+
 int
 UeManager::SplitAlgorithm () // woody
 {
@@ -769,6 +849,41 @@ UeManager::SplitAlgorithm () // woody
  2: alternative splitting
 
 */
+
+  if (m_splitInitialized == false)
+  {
+    etha_AtMenbFromDelay = 0.5;
+    etha_AtSenbFromDelay = 0.5;
+    etha_AtMenbFromQueueSize = 0.5;
+    etha_AtSenbFromQueueSize = 0.5;
+    pastEthaAtMenbFromDelay = 0.5;
+    pastEthaAtSenbFromDelay = 0.5;
+    pastEthaAtMenbFromQueueSize = 0.5;
+    pastEthaAtSenbFromQueuesize = 0.5;
+/*    if (m_splitAlgorithm == 6 || m_splitAlgorithm == 5)
+    {
+      Simulator::Schedule (MilliSeconds (splitTimerInterval), &EpcSgwPgwApplication::SplitTimer, this, teidInfo, tei
+d);
+    }*/
+    Simulator::Schedule (MilliSeconds (m_splitTimerInterval), &UeManager::SplitTimer, this);
+
+    m_splitInitialized = true;
+    m_countChunk = 0;
+    m_packetNum = 0;
+    m_ethaMenb = 0.2;
+    m_prevQueueSizeMenb = 0;
+    m_prevQueueSizeSenb = 0;
+//    teidInfo->prevDelayMenb = 0;
+//    teidInfo->prevDelaySenb = 0;
+    info[0].rlc_average_delay = 0;
+    info[1].rlc_average_delay = 0;
+    info[0].rlc_average_queue = 0;
+    info[1].rlc_average_queue = 0;
+    m_cumDataRateMenb = 0;
+    m_cumDataRateSenb = 0;
+    m_sumPacketSizeMenb = 0;
+    m_sumPacketSizeSenb = 0;
+  }
 
   // return 0 for Tx through MeNB &  return 1 for Tx through SeNB
   int size =30 ;  //sjkang0531
@@ -790,16 +905,13 @@ UeManager::SplitAlgorithm () // woody
 
     	        if (count_forSplitting > size*(pastEthaAtSenbFromDelay+pastEthaAtMenbFromDelay)){
     	        	UpdateEthas();
-
     	        	count_forSplitting =0;
-    	        	 return 0;
+    	        	return 0;
     	        }
     	        else if (count_forSplitting < pastEthaAtMenbFromDelay*size)
     	        {
-
     	        	count_forSplitting++;
     	        	return 0;
-
     	        }
     	        else if (count_forSplitting >= pastEthaAtMenbFromDelay *size
     	        		&& count_forSplitting <= size*(pastEthaAtMenbFromDelay+pastEthaAtSenbFromDelay))
@@ -811,16 +923,13 @@ UeManager::SplitAlgorithm () // woody
     case 4:
     if (count_forSplitting > size*(pastEthaAtSenbFromQueuesize+pastEthaAtMenbFromQueueSize)){
   	        	UpdateEthas();
-
   	        	count_forSplitting =0;
-  	        	 return 0;
+  	        	return 0;
   	        }
   	        else if (count_forSplitting < pastEthaAtMenbFromQueueSize*size)
   	        {
-
   	        	count_forSplitting++;
   	        	return 0;
-
   	        }
   	        else if (count_forSplitting >= pastEthaAtMenbFromQueueSize *size
   	        		&& count_forSplitting <= size*(pastEthaAtMenbFromQueueSize+pastEthaAtSenbFromQueuesize))
@@ -829,6 +938,18 @@ UeManager::SplitAlgorithm () // woody
   	        	return 1;
   	        }
   	        break;
+    case 6:
+      m_packetNum++;
+      m_countChunk++;
+
+      if (m_countChunk < (1 - m_ethaMenb) * m_chunkSize) return 1;
+      else if ((m_countChunk >= (1 - m_ethaMenb) * m_chunkSize && m_countChunk <= m_chunkSize)) return 0;
+      else
+      {
+        m_countChunk = 1;
+        return 1;
+      }
+      break;
 
   }
   return -1;
@@ -869,31 +990,33 @@ UeManager::SendData (uint8_t bid, Ptr<Packet> p)
                 LtePdcpSapProvider* pdcpSapProvider = bearerInfo->m_pdcp->GetLtePdcpSapProvider ();
 		
 		Gtpu_SN_Header gtpu_SN_Header; //sjkang0601
-        if (bearerInfo->m_dcType == 0 || bearerInfo->m_dcType == 1){
-         p->RemoveHeader(gtpu_SN_Header); //sjkang0601
-	pdcpSapProvider->TransmitPdcpSdu (params); //sjkang0601
+                if (bearerInfo->m_dcType == 0 || bearerInfo->m_dcType == 1){
+                  p->RemoveHeader(gtpu_SN_Header); //sjkang0601
+                  pdcpSapProvider->TransmitPdcpSdu (params); //sjkang0601
 	        }        
-	else if ( bearerInfo->m_dcType == 3){ // woody3C, woody1X
-		bearerInfo->m_pdcp->enable1X =true;  //sjkang0601
-          	pdcpSapProvider->TransmitPdcpSdu (params);
-	 	}
-        else if (bearerInfo->m_dcType == 2){
-          p->RemoveHeader(gtpu_SN_Header);  //sjkang0601
-	int t_splitter = SplitAlgorithm();
-	  if (t_splitter == 1){
-            NS_LOG_INFO("**MeNB forward packet toward SeNB");
-            m_lastDirection = 1;
-            m_currentBid = bid;
-            pdcpSapProvider->TransmitPdcpSduDc (params);
-          }
-          else if (t_splitter == 0) {
-            NS_LOG_INFO("**MeNB transmits packet directly");
-            m_lastDirection = 0;
-            pdcpSapProvider->TransmitPdcpSdu (params);
-          }
-          else NS_FATAL_ERROR ("unknwon t_splitter value");
-        }
-      }
+                else if ( bearerInfo->m_dcType == 3){ // woody3C, woody1X
+                  bearerInfo->m_pdcp->enable1X =true;  //sjkang0601
+                  pdcpSapProvider->TransmitPdcpSdu (params);
+                }
+                else if (bearerInfo->m_dcType == 2){
+                  p->RemoveHeader(gtpu_SN_Header);  //sjkang0601
+                  int t_splitter = SplitAlgorithm();
+                  if (t_splitter == 1){
+                    NS_LOG_INFO("**MeNB forward packet toward SeNB");
+                    m_lastDirection = 1;
+                    m_sumPacketSizeSenb += p->GetSize();
+                    m_currentBid = bid;
+                    pdcpSapProvider->TransmitPdcpSduDc (params);
+                  }
+                  else if (t_splitter == 0) {
+                    NS_LOG_INFO("**MeNB transmits packet directly");
+                    m_lastDirection = 0;
+                    m_sumPacketSizeMenb += p->GetSize();
+                    pdcpSapProvider->TransmitPdcpSdu (params);
+                  }
+                  else NS_FATAL_ERROR ("unknwon t_splitter value");
+                }
+             }
           }
       }
       break;
@@ -2112,12 +2235,14 @@ LteEnbRrc::SendData (Ptr<Packet> packet)
   NS_ASSERT_MSG (found, "no EpsBearerTag found in packet to be sent");
   Ptr<UeManager> ueManager = GetUeManager (tag.GetRnti ());
   ueManager->SendData (tag.GetBid (), packet);
+
   if (c_c ==0 && m_isMenb ){
-  Traces(); c_c=1;
- }
+    Traces(); c_c=1;
+  }
+
   if (m_ismmWave && c__c==0){
-	Traces();
-	c__c=1;
+    Traces();
+    c__c=1;
   }
   return true;
 }
@@ -2241,6 +2366,16 @@ LteEnbRrc::DoDataRadioBearerSetupRequest (EpcEnbS1SapUser::DataRadioBearerSetupR
   Ptr<UeManager> ueManager = GetUeManager (request.rnti);
   ueManager->SetDcCell (m_dcCell); // woody3C
   ueManager->SetupDataRadioBearer (request.bearer, request.bearerId, request.gtpTeid, request.transportLayerAddress, request.dcType); // woody3C
+
+/*  if (c_c ==0 && m_isMenb ){
+    Traces(); c_c=1;
+  }*/
+
+  if (m_ismmWave && c__c==0){
+    Traces();
+    c__c=1;
+  }
+
 }
 
 void 
@@ -2926,24 +3061,26 @@ LteEnbRrc::GetAssistInfoPtr () // woody
   NS_LOG_FUNCTION (this);
   return m_assistInfoPtr;
 }
+
 void
 LteEnbRrc::Traces(){  //sjkang0713
-	 std::map<uint16_t, Ptr<UeManager> >::iterator it = m_ueMap.begin();
-	 for (it=m_ueMap.begin(); it!=m_ueMap.end();it++){
-		 std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > DrbInfo; //sjkang0712
-		DrbInfo = it->second->GetDrb();
-		std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > ::iterator itt;
-       for (itt=DrbInfo.begin(); itt!= DrbInfo.end(); itt++){
+  std::map<uint16_t, Ptr<UeManager> >::iterator it = m_ueMap.begin();
 
-       if(itt->second->m_rlcConfig.choice == LteRrcSap::RlcConfig::AM && DrbInfo.size()!=0 )
-       {
-      uint16_t drbId=itt->second->m_drbIdentity;
-    itt->second->m_rlc->GetObject<LteRlcAm>()->SetRlcAmIdentity
-	(it->second->GetImsi(),drbId, m_isMenb, m_ismmWave);
+  for (it=m_ueMap.begin(); it!=m_ueMap.end();it++)
+  {
+    std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > DrbInfo; //sjkang0712
+    DrbInfo = it->second->GetDrb();
+    std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > ::iterator itt;
 
-         }
-	 }
-}
+    for (itt=DrbInfo.begin(); itt!= DrbInfo.end(); itt++)
+    {
+      if(itt->second->m_rlcConfig.choice == LteRrcSap::RlcConfig::AM && DrbInfo.size()!=0 )
+      {
+        uint16_t drbId=itt->second->m_drbIdentity;
+        itt->second->m_rlc->GetObject<LteRlcAm>()->SetRlcAmIdentity (it->second->GetImsi(),drbId, m_isMenb, m_ismmWave);
+      }
+    }
+  }
 }
 
 } // namespace ns3

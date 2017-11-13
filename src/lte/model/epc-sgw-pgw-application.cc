@@ -131,7 +131,7 @@ EpcSgwPgwApplication::DoDispose ()
 }
 
   
-std::ofstream OutFile_forEtha1X ("etha_At_1X.txt");
+//std::ofstream OutFile_forEtha1X ("etha_At_1X.txt");
 
 EpcSgwPgwApplication::EpcSgwPgwApplication (const Ptr<VirtualNetDevice> tunDevice, const Ptr<Socket> s1uSocket)
   : m_s1uSocket (s1uSocket),
@@ -143,7 +143,7 @@ EpcSgwPgwApplication::EpcSgwPgwApplication (const Ptr<VirtualNetDevice> tunDevic
   NS_LOG_FUNCTION (this << tunDevice << s1uSocket);
   m_s1uSocket->SetRecvCallback (MakeCallback (&EpcSgwPgwApplication::RecvFromS1uSocket, this));
   m_s11SapSgw = new MemberEpcS11SapSgw<EpcSgwPgwApplication> (this);
-  OutFile_forEtha1X << "time\tteid\tMenb_etha_delay\tSenb_etha_delay\tMenb_etha_Queue\tSenb_etha_Queue" << std::endl;
+//  OutFile_forEtha1X << "time\tteid\tMenb_etha_delay\tSenb_etha_delay\tMenb_etha_Queue\tSenb_etha_Queue" << std::endl;
 }
 
   
@@ -186,7 +186,7 @@ bool ToSenb=false, ToMenb=false;
 int p1,p2;
 int ChunkSize = 50;
 
-std::ofstream OutFile_test ("test_algorithm.txt");
+//std::ofstream OutFile_test ("test_algorithm.txt");
 
 void
 EpcSgwPgwApplication::UpdateEthas(TeidInfo *t, uint32_t teid){
@@ -233,21 +233,21 @@ EpcSgwPgwApplication::UpdateEthas(TeidInfo *t, uint32_t teid){
 	t->targetQueueSize = std::max(queueSizeAtMenb, queueSizeAtSenb);
 	t->targetQueueSize += t->targetQueueSize*0.2;
 
-OutFile_test << Simulator::Now().GetSeconds()<< "\t"
-<< teid << "\t"
-<< delayAtMenb << "\t"
-<< delayAtSenb << "\t"
-<< DelayDifferenceAtMenb << "\t"
-<< DelayDifferenceAtSenb << "\t"
-<< t->etha_AtMenbFromDelay << "\t"
-<< t->etha_AtSenbFromDelay << "\t"
-<< queueSizeAtMenb << "\t"
-<< queueSizeAtSenb << "\t"
-<< QueueDifferenceAtMenb << "\t"
-<< QueueDifferenceAtSenb << "\t"
-<< t->etha_AtMenbFromQueueSize << "\t"
-<< t->etha_AtSenbFromQueueSize << "\t"
-<< t->targetQueueSize << std::endl;
+//OutFile_test << Simulator::Now().GetSeconds()<< "\t"
+//<< teid << "\t"
+//<< delayAtMenb << "\t"
+//<< delayAtSenb << "\t"
+//<< DelayDifferenceAtMenb << "\t"
+//<< DelayDifferenceAtSenb << "\t"
+//<< t->etha_AtMenbFromDelay << "\t"
+//<< t->etha_AtSenbFromDelay << "\t"
+//<< queueSizeAtMenb << "\t"
+//<< queueSizeAtSenb << "\t"
+//<< QueueDifferenceAtMenb << "\t"
+//<< QueueDifferenceAtSenb << "\t"
+//<< t->etha_AtMenbFromQueueSize << "\t"
+//<< t->etha_AtSenbFromQueueSize << "\t"
+//<< t->targetQueueSize << std::endl;
 
 //targetQueueSize = std::max(2.5*t_targetQueueSize - 1.5*pre_QueueSize,t_targetQueueSize+t_targetQueueSize*0.2); 
         //pre_QueueSize = t_targetQueueSize; 
@@ -276,20 +276,20 @@ OutFile_test << Simulator::Now().GetSeconds()<< "\t"
                 ToSenb=false;
                 ToMenb=false;
         }
-  	OutFile_forEtha1X << Simulator::Now().GetSeconds()<< "\t"
-		<< teid << "\t"
-		<< t->pastEthaAtMenbFromDelay << "\t"
-		<< t->pastEthaAtSenbFromDelay << "\t"
-		<< t->pastEthaAtMenbFromQueueSize << "\t"
-		<< t->pastEthaAtSenbFromQueuesize
-		<< std::endl;
+//  	OutFile_forEtha1X << Simulator::Now().GetSeconds()<< "\t"
+//		<< teid << "\t"
+//		<< t->pastEthaAtMenbFromDelay << "\t"
+//		<< t->pastEthaAtSenbFromDelay << "\t"
+//		<< t->pastEthaAtMenbFromQueueSize << "\t"
+//		<< t->pastEthaAtSenbFromQueuesize
+//		<< std::endl;
   		//	<< pastEthaAtSenbFromDelay << "\t" << ThroughputAtMenb << "\t" << ThroughputAtSenb << std::endl;
 }
 
 //int count_forSplitting_At_SgwPgw=0;
 
-std::ofstream OutFile_test5 ("test_algorithm5.txt");
-std::ofstream OutFile_test6 ("test_algorithm6.txt");
+//std::ofstream OutFile_test5 ("test_algorithm5.txt");
+//std::ofstream OutFile_test6 ("test_algorithm6.txt");
 
 void
 EpcSgwPgwApplication::SplitTimer (TeidInfo *t, uint32_t teid) // woody
@@ -332,20 +332,20 @@ EpcSgwPgwApplication::SplitTimer (TeidInfo *t, uint32_t teid) // woody
 		t->prevQueueSizeMenb = queueSizeMenb;
 		t->prevQueueSizeSenb = queueSizeSenb;
 
-OutFile_test6
-	<< Simulator::Now().GetSeconds() << "\t"
-	<< teid << "\t"
-	<< queueSizeMenb << "\t"
-	<< queueSizeSenb << "\t"
-	<< dataRateMenb << "\t"
-	<< dataRateSenb << "\t"
-	<< t->cumDataRateMenb << "\t"
-	<< t->cumDataRateSenb << "\t"
-	<< t->packetNum << "\t"
-	<< nextEthaMenb << "\t"
-	<< t->ethaMenb << "\t"
-	<< t->sumPacketSizeMenb << "\t"
-	<< t->sumPacketSizeSenb <<  std::endl;
+//OutFile_test6
+//	<< Simulator::Now().GetSeconds() << "\t"
+//	<< teid << "\t"
+//	<< queueSizeMenb << "\t"
+//	<< queueSizeSenb << "\t"
+//	<< dataRateMenb << "\t"
+//	<< dataRateSenb << "\t"
+//	<< t->cumDataRateMenb << "\t"
+//	<< t->cumDataRateSenb << "\t"
+//	<< t->packetNum << "\t"
+//	<< nextEthaMenb << "\t"
+//	<< t->ethaMenb << "\t"
+//	<< t->sumPacketSizeMenb << "\t"
+//	<< t->sumPacketSizeSenb <<  std::endl;
 
 		}
 	}
@@ -369,16 +369,16 @@ OutFile_test6
 		t->prevDelayMenb = delayMenb;
 		t->prevDelaySenb = delaySenb;
 
-OutFile_test5
-	<< Simulator::Now().GetSeconds() << "\t"
-	<< teid << "\t"
-	<< delayMenb << "\t"
-	<< delaySenb << "\t"
-	<< dataRateMenb << "\t"
-	<< dataRateSenb << "\t"
-	<< t->packetNum << "\t"
-	<< nextEthaMenb << "\t"
-	<< t->ethaMenb << std::endl;
+//OutFile_test5
+//	<< Simulator::Now().GetSeconds() << "\t"
+//	<< teid << "\t"
+//	<< delayMenb << "\t"
+//	<< delaySenb << "\t"
+//	<< dataRateMenb << "\t"
+//	<< dataRateSenb << "\t"
+//	<< t->packetNum << "\t"
+//	<< nextEthaMenb << "\t"
+//	<< t->ethaMenb << std::endl;
 
 	}
 

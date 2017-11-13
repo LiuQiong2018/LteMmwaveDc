@@ -115,28 +115,73 @@ int stateChanged = 0;
 double
 MmWave3gppBuildingsPropagationLossModel::DoCalcRxPower (double txPowerDbm, Ptr<MobilityModel> a, Ptr<MobilityModel> b) const
 {
+	return txPowerDbm - GetLoss (a,b);
 // woody
-if (Now().GetSeconds() < 2 || Now().GetSeconds() > 5)
+/*if (Now().GetSeconds() < 2)
 {
 	if (stateChanged == 0)
 	{
-		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b));
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable);
 		stateChanged = 1;
 	}
-	return txPowerDbm - GetLoss (a,b);
+	return txPowerDbm - GetLoss (a,b) - (double)variable;
 }
-else
+else if (Now().GetSeconds() < 4)
 {
 	if (stateChanged == 1)
 	{
-		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable);
-		stateChanged = 0;
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable - 2.0);
+		stateChanged = 2;
+	}
+	return txPowerDbm - GetLoss (a,b) - (double)variable - 2.0;
+}
+else if (Now().GetSeconds() < 6)
+{
+	if (stateChanged == 2)
+	{
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable - 3.0);
+		stateChanged = 3;
+	}
+	return txPowerDbm - GetLoss (a,b) - (double)variable - 3.0;
+}
+else if (Now().GetSeconds() < 8)
+{
+	if (stateChanged == 3)
+	{
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable - 4.0);
+		stateChanged = 4;
+	}
+	return txPowerDbm - GetLoss (a,b) - (double)variable - 4.0;
+}
+else if (Now().GetSeconds() < 10)
+{
+	if (stateChanged == 4)
+	{
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable - 3.0);
+		stateChanged = 5;
 	}
 
-	return txPowerDbm - GetLoss(a,b) - (double)variable;
+	return txPowerDbm - GetLoss(a,b) - (double)variable - 3.0;
 }
+else if (Now().GetSeconds() < 12)
+{
+	if (stateChanged == 5)
+	{
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable - 2.0);
+		stateChanged = 6;
+	}
+	return txPowerDbm - GetLoss (a,b) - (double)variable - 2.0;
+}
+else
+{
+	if (stateChanged == 6)
+	{
+		NS_LOG_UNCOND(Now().GetSeconds() << " changed to " << txPowerDbm - GetLoss(a,b) - (double)variable);
+		stateChanged = 7;
+	}
+	return txPowerDbm - GetLoss (a,b) - (double)variable;
+}*/
 
-//	return txPowerDbm - GetLoss (a, b);
 }
 //bool prevIsLos; // woody
 double

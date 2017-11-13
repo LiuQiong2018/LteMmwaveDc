@@ -304,6 +304,7 @@ main (int argc, char *argv[])
 //	LogComponentEnable("TcpL4Protocol", LOG_FUNCTION);
 	LogComponentEnable("LtePdcp", LOG_INFO);
 	LogComponentEnable("TcpCubic", LOG_INFO);
+	LogComponentEnable("TcpCubic", LOG_DEBUG);
 
 	bool enablePDCPReordering =true;
 	int nodeNum_t = 1;
@@ -390,8 +391,9 @@ main (int argc, char *argv[])
 	Config::SetDefault ("ns3::TcpSocket::SndBufSize", UintegerValue (131072*200*40));
 	Config::SetDefault ("ns3::TcpSocket::RcvBufSize", UintegerValue (131072*200*40));
 	Config::SetDefault ("ns3::TcpCubic::HyStart", BooleanValue (false));
-	Config::SetDefault ("ns3::TcpCubic::C", DoubleValue (300.0));
+	Config::SetDefault ("ns3::TcpCubic::C", DoubleValue (0.8));
 	Config::SetDefault ("ns3::TcpSocket::InitialSlowStartThreshold", UintegerValue (7000000));
+	Config::SetDefault ("ns3::TcpCubic::CntClamp", UintegerValue (200));
 	if(protocol == "TcpNewReno")
 	{
 		Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TcpNewReno::GetTypeId ()));

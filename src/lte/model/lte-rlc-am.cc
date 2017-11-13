@@ -152,7 +152,7 @@ LteRlcAm::GetTypeId (void)
 				   MakeBooleanChecker ())
          .AddAttribute ("SplitTimerInterval", // woody
                                         "Setting splitTimerInterval for calculating average queuing delay",
-                                   UintegerValue (0),
+                                   UintegerValue (10),
                                    MakeUintegerAccessor (&LteRlcAm::splitTimerInterval),
                                    MakeUintegerChecker<uint32_t> ())
     ;
@@ -676,6 +676,7 @@ LteRlcAm::DoNotifyTxOpportunity (uint32_t bytes, uint8_t layer, uint8_t harqId)
 
   Ptr<Packet> firstSegment = (*(m_txonBuffer.begin ()))->Copy ();
   m_txonBufferSize -= (*(m_txonBuffer.begin()))->GetSize ();
+  dataRate += (*(m_txonBuffer.begin()))->GetSize(); // woody
   NS_LOG_LOGIC ("txBufferSize      = " << m_txonBufferSize );
   m_txonBuffer.erase (m_txonBuffer.begin ());
 
@@ -734,6 +735,7 @@ LteRlcAm::DoNotifyTxOpportunity (uint32_t bytes, uint8_t layer, uint8_t harqId)
                   m_txonBuffer.insert (m_txonBuffer.begin (), firstSegment);
               }
               m_txonBufferSize += (*(m_txonBuffer.begin()))->GetSize ();
+              dataRate -= (*(m_txonBuffer.begin()))->GetSize (); // woody
 
               NS_LOG_LOGIC ("    Txon buffer: Give back the remaining segment");
               NS_LOG_LOGIC ("    Txon buffers = " << m_txonBuffer.size ());
@@ -846,10 +848,12 @@ LteRlcAm::DoNotifyTxOpportunity (uint32_t bytes, uint8_t layer, uint8_t harqId)
         	  Ptr<Packet> tempP = m_txonQueue->Dequeue()->GetPacket();
         	  m_txonBuffer.push_back (tempP);
         	  m_txonBufferSize += tempP->GetSize ();
+                  dataRate -= tempP->GetSize (); // woody
           }
 
           firstSegment = (*(m_txonBuffer.begin ()))->Copy ();
           m_txonBufferSize -= (*(m_txonBuffer.begin()))->GetSize ();
+          dataRate += (*(m_txonBuffer.begin()))->GetSize(); // woody
           m_txonBuffer.erase (m_txonBuffer.begin ());
           NS_LOG_LOGIC ("        txBufferSize = " << m_txonBufferSize );
         }
@@ -2234,18 +2238,15 @@ LteRlcAm::GetReportBufferStatus(LteMacSapProvider::ReportBufferStatusParameters 
     sumDelay = 0;
     packetNum = 0;
     sumBufferSize = 0;
+    dataRate = 0;
 
     Simulator::Schedule (MilliSeconds (0), &LteRlcAm::AverageDelayTimer, this);
 
     isInitialized = true;
   }
 
-/*  if (enb1_Address ==this) OutFile8<< Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
-  else if(ue_Address==this) OutFile9<<Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
-  else if (enb2_Address == this) OutFile10<<Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<<(double)r.retxQueueHolDelay/1000.0 << std::endl;
-*/
   // woody
-  if (m_assistInfoPtr){
+/*  if (m_assistInfoPtr){
     m_assistInfoPtr->rlc_tx_queue = r.txQueueSize;
     m_assistInfoPtr->rlc_retx_queue = r.retxQueueSize;
     m_assistInfoPtr->rlc_tx_queue_hol_delay = (double)r.txQueueHolDelay/1000.0;
@@ -2259,11 +2260,19 @@ LteRlcAm::GetReportBufferStatus(LteMacSapProvider::ReportBufferStatusParameters 
 // woody, temporarily UE-side AssistInfo blocked
 //      m_ueRrc->SendAssistInfo (*m_assistInfoPtr);
     }
-  }
+  }*/
 
   sumDelay += (double)r.txQueueHolDelay;
   sumBufferSize += r.txQueueSize + r.retxQueueSize;
   packetNum ++;
+
+/*  if (enb1_Address ==this) OutFile8<< Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" << packetNum << std::endl;
+  else if(ue_Address==this) OutFile9<<Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" << packetNum << std::endl;
+  else if (enb2_Address == this) OutFile10<<Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" << packetNum << std::endl;*/
+
+/*  if (enb1_Address ==this) OutFile8<< Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
+  else if(ue_Address==this) OutFile9<<Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<< (double)r.retxQueueHolDelay/1000.0 << std::endl;
+  else if (enb2_Address == this) OutFile10<<Simulator::Now().GetSeconds()<< "\t" << this<<"\t"<< r.txQueueSize << "\t" <<r.retxQueueSize <<"\t" <<(double)r.txQueueHolDelay/1000.0 << "\t"<<(double)r.retxQueueHolDelay/1000.0 << std::endl;*/
 }
 
 std::ofstream OutFile_testAl5 ("test_tempt.txt");
@@ -2272,6 +2281,9 @@ void
 LteRlcAm::AverageDelayTimer () // woody
 {
         NS_LOG_FUNCTION (this);
+
+    m_assistInfoPtr->rlc_tx_queue = m_txonBufferSize + m_txonQueue->GetNBytes();
+    m_assistInfoPtr->rlc_retx_queue = m_retxBufferSize;
 
 	if (packetNum == 0)
 	{
@@ -2284,15 +2296,21 @@ LteRlcAm::AverageDelayTimer () // woody
 		m_assistInfoPtr->rlc_average_queue = sumBufferSize / packetNum;
 	}
 
+	m_assistInfoPtr->data_rate = dataRate;
+
 	if (m_isEnbRlc) m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
-if (m_isEnbRlc)
-{
 OutFile_testAl5 <<
          Simulator::Now().GetSeconds() << "\t"
+	<< this << "\t"
+	<< (unsigned) m_assistInfoPtr->bearerId << "\t"
+	<< m_assistInfoPtr->rlc_tx_queue << "\t"
 	<< sumBufferSize << "\t"
 	<< packetNum << "\t"
-	<< m_isEnbRlc << "\t"
-	<< m_assistInfoPtr->rlc_average_queue << "\t" << this << "\t" << (unsigned) m_assistInfoPtr->bearerId << m_assistInfoPtr << std::endl;
+	<< dataRate << "\t" 
+	<< std::endl;
+
+if (m_isEnbRlc)
+{
 /*NS_LOG_UNCOND(
          Simulator::Now().GetSeconds() << "\tRlcAm\t"
 	<< sumDelay << "\t"
@@ -2304,6 +2322,7 @@ OutFile_testAl5 <<
 	sumDelay = 0;
 	sumBufferSize = 0;
 	packetNum = 0;
+        dataRate = 0;
 
 	Simulator::Schedule (MilliSeconds (splitTimerInterval), &LteRlcAm::AverageDelayTimer, this);
 }
@@ -2338,20 +2357,21 @@ LteRlcAm::CalculatePathThroughput (std::ofstream *stream) // woody
   Simulator::Schedule (MilliSeconds (100), &LteRlcAm::CalculatePathThroughput, this, stream);
 }
 void
-LteRlcAm::SetRlcAmIdentity(uint16_t imsi, uint16_t bearerId, bool isMenb, bool isMmenb){ //sjkang0713
+LteRlcAm::SetRlcAmIdentity(uint16_t imsi, uint16_t bearerId, bool isMenb, bool isSenb){ //sjkang0713
 	std::ostringstream fileName;
 	if (isMenb)
 	{
 		fileName<<"Menb-"<<"UE-"<<imsi <<"-"<< bearerId <<"-RLC-DATA.txt";
 	}
-	else if (isMmenb)
+	else if (isSenb)
 	{
 		fileName<<"Senb-"<<"UE-"<<imsi <<"-"<< bearerId <<"-RLC-DATA.txt";
 	}
+	else NS_FATAL_ERROR("Unexpected eNB identifier");
 
 	AsciiTraceHelper asciiTraceHelper;
-	FileStremFromRlcAddress[this] = asciiTraceHelper.CreateFileStream (fileName.str ().c_str ());
-	*FileStremFromRlcAddress[this]->GetStream()<< "time "<<"\t" <<"txonBufferSize"
+	FileStreamFromRlcAddress[this] = asciiTraceHelper.CreateFileStream (fileName.str ().c_str ());
+	*FileStreamFromRlcAddress[this]->GetStream()<< "time "<<"\t" <<"txonBufferSize"
 		 <<"\t"<<"txedBufferSize" << "\t"<<"retxBufferSize" <<"\t" <<"reciveBufferSize" <<std::endl;
 
 	ReportRlcBufferSizeForUE();
@@ -2359,9 +2379,9 @@ LteRlcAm::SetRlcAmIdentity(uint16_t imsi, uint16_t bearerId, bool isMenb, bool i
 
 void
 LteRlcAm::ReportRlcBufferSizeForUE(){ //sjkang0712
-	*FileStremFromRlcAddress[this]->GetStream()<<Simulator::Now().GetSeconds()<< " \t   "
-		<< m_txonBufferSize << "  \t    " << m_txedBufferSize << "  \t              " << m_retxBufferSize
-		<<"  \t            "<<m_rxonBuffer.size()  << std::endl;
+	*FileStreamFromRlcAddress[this]->GetStream()<<Simulator::Now().GetSeconds() << "\t"
+		<< m_txonBufferSize << "\t" << m_txedBufferSize << "\t" << m_retxBufferSize
+		<< "\t" << m_rxonBuffer.size() << std::endl;
 	
 	Simulator::Schedule (MilliSeconds (10), &LteRlcAm::ReportRlcBufferSizeForUE, this);
 }

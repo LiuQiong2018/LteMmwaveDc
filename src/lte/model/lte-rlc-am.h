@@ -68,13 +68,14 @@ public:
   double averageBufferSize;
   Time SamplingTime;
   uint32_t ArrayInMovingWindow[11];
+  uint32_t dataRate;
 
   // woody
   virtual void SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr);
   virtual void IsEnbRlc (void);
   virtual void SetRrc (Ptr<LteEnbRrc> enbRrc, Ptr<LteUeRrc> ueRrc);
   virtual void CalculatePathThroughput (std::ofstream *streamPathThroughput);
-  void SetRlcAmIdentity(uint16_t imsi, uint16_t bearerId, bool isMenb, bool isMmenb);
+  void SetRlcAmIdentity(uint16_t imsi, uint16_t bearerId, bool isMenb, bool isSenb);
   void ReportRlcBufferSizeForUE();
 private:
   // woody
@@ -84,7 +85,7 @@ private:
   Ptr<LteUeRrc> m_ueRrc;
   uint32_t sumPacketSize;
   uint32_t lastSumPacketSize;
-  std::map<Ptr<LteRlcAm>,Ptr<OutputStreamWrapper>>FileStremFromRlcAddress;
+  std::map<Ptr<LteRlcAm>,Ptr<OutputStreamWrapper>>FileStreamFromRlcAddress;
 
   void AverageDelayTimer ();
   double sumDelay;

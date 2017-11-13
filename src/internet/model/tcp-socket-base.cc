@@ -1462,6 +1462,7 @@ void
 TcpSocketBase::FastRetransmit ()
 {
   NS_LOG_FUNCTION (this);
+NS_LOG_UNCOND("FastRetransmit called");
   NS_ASSERT (m_tcb->m_congState != TcpSocketState::CA_RECOVERY);
 
   m_recover = m_tcb->m_highTxMark;
@@ -1477,13 +1478,17 @@ TcpSocketBase::FastRetransmit ()
   NS_LOG_INFO (m_dupAckCount << " dupack. Enter fast recovery mode." <<
                "Reset cwnd to " << m_tcb->m_cWnd << ", ssthresh to " <<
                m_tcb->m_ssThresh << " at fast recovery seqnum " << m_recover);
-  DoRetransmit ();
+//NS_LOG_UNCOND (m_dupAckCount << " dupack. Enter fast recovery mode." << // woody
+//               "Reset cwnd to " << m_tcb->m_cWnd << ", ssthresh to " <<
+//               m_tcb->m_ssThresh << " at fast recovery seqnum " << m_recover);
+ DoRetransmit ();
 }
 
 void
 TcpSocketBase::DupAck ()
 {
   NS_LOG_FUNCTION (this);
+//NS_LOG_UNCOND ("DupAck called\t" << Simulator::Now().GetSeconds()); // woody
   ++m_dupAckCount;
 
   if (m_tcb->m_congState == TcpSocketState::CA_OPEN)
@@ -1520,6 +1525,9 @@ TcpSocketBase::DupAck ()
 //NS_LOG_UNCOND (" " << Simulator::Now().GetSeconds() << " m_ssThresh " << m_tcb->m_ssThresh << " m_cWnd " << m_tcb->m_cWnd);
       NS_LOG_INFO (m_dupAckCount << " Dupack received in fast recovery mode."
                    "Increase cwnd to " << m_tcb->m_cWnd);
+NS_LOG_UNCOND (m_dupAckCount << " Dupack received in fast recovery mode." // woody
+                   "Increase cwnd to " << m_tcb->m_cWnd);
+
       SendPendingData (m_connected);
     }
 
@@ -1549,6 +1557,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
       && packet->GetSize () == 0)
     {
       // There is a DupAck
+NS_LOG_UNCOND("DupAck: ackNumber " << ackNumber << " m_tcb->m_nextTxSequence " << m_tcb->m_nextTxSequence);
       DupAck ();
     }
   else if (ackNumber == m_txBuffer->HeadSequence ()

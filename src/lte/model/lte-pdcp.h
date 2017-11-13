@@ -149,6 +149,7 @@ public:
   Time PdcpDelayCalculater(uint16_t SN); // sjkang
 
   // woody
+  void t_EarlyRetTimer_Expired(); // woody
   void SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr);
   void IsEnbPdcp (void);
   Ptr<LteEnbRrc> m_enbRrc;
@@ -216,9 +217,13 @@ private:
     int randomSequence[10000] ;
 
   // woody
+  Time earlyRetTime;
+  EventId t_EarlyRetTimer;
   bool m_isEnbPdcp;
   LteRrcSap::AssistInfo *m_assistInfoPtr;
   bool m_enableReordering;
+  LtePdcpSapUser::ReceivePdcpSduParameters Last_Submitted_PDCP_Param;
+  bool m_doEarlyRet = false;
 };
 
 

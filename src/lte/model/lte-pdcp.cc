@@ -107,6 +107,11 @@ LtePdcp::GetTypeId (void)
 			 TimeValue(MilliSeconds(100)),
 			 MakeTimeAccessor (&LtePdcp::expiredTime),
              MakeTimeChecker ())
+   .AddAttribute("EarlyRetTime", "PDCP early ret time", // woody
+                 TimeValue(MilliSeconds(50)),
+                 MakeTimeAccessor (&LtePdcp::earlyRetTime),
+                 MakeTimeChecker ())
+
     .AddTraceSource ("TxPDU",
                      "PDU transmission notified to the RLC.",
                      MakeTraceSourceAccessor (&LtePdcp::m_txPdu),
@@ -397,7 +402,7 @@ LtePdcp::BufferingAndReordering(Ptr<Packet> p){ // sjkang
   for (iter =PdcpBuffer.begin(); iter != PdcpBuffer.end() ; ++iter)
   {
     if (iter->first == receivedPDCP_SN ) {
-	NS_LOG_INFO(iter->first << "   discard ");
+	NS_LOG_INFO(Simulator::Now().GetSeconds() << " " << iter->first << " discard at PDCP Rx");
 	return;
     }
   }
@@ -419,8 +424,8 @@ NS_LOG_UNCOND(it->first);
   if (((receivedPDCP_SN -Last_Submitted_PDCP_RX_SN) > reorderingWindow)
       ||((((Last_Submitted_PDCP_RX_SN-receivedPDCP_SN)) >= 1400 && ((Last_Submitted_PDCP_RX_SN-receivedPDCP_SN)< reorderingWindow))))
   {
-    NS_LOG_INFO("last SN " << Last_Submitted_PDCP_RX_SN << "\t"
-                "received SN"	<< PacketInBuffer.sequenceNumber<< " _discard");
+    NS_LOG_INFO(Simulator::Now().GetSeconds() << " Last_Submitted_PDCP_RX_SN " << Last_Submitted_PDCP_RX_SN
+               << " receivedPDCP_SN " << PacketInBuffer.sequenceNumber<< " discard at PDCP Rx");
     PdcpBuffer.erase(PacketInBuffer.sequenceNumber);
     return ;
   }
@@ -465,9 +470,11 @@ NS_LOG_UNCOND(it->first);
       if (it == PdcpBuffer.end()) break;
 
       PdcpDelayCalculater(nextPDCP_SN); 
-      m_pdcpSapUser->ReceivePdcpSdu(PdcpBuffer[nextPDCP_SN]);
+      if (m_doEarlyRet) m_doEarlyRet = false;
+      else m_pdcpSapUser->ReceivePdcpSdu(PdcpBuffer[nextPDCP_SN]);
+      Last_Submitted_PDCP_Param = PdcpBuffer[nextPDCP_SN];
 
-      printData(" Reordered_SN ", nextPDCP_SN);
+      printData("Reordered_SN", nextPDCP_SN);
       PdcpBuffer.erase(nextPDCP_SN);
       Last_Submitted_PDCP_RX_SN = nextPDCP_SN;
 
@@ -480,6 +487,7 @@ NS_LOG_UNCOND(it->first);
     if(check == true)
     {
       t_ReorderingTimer.Cancel();
+      t_EarlyRetTimer.Cancel();
       check = false;
     }
   }
@@ -488,16 +496,25 @@ NS_LOG_UNCOND(it->first);
   {
     if (PdcpBuffer.size()>=1){
       t_ReorderingTimer = Simulator::Schedule(expiredTime, &LtePdcp::t_ReordringTimer_Expired, this);
+      t_EarlyRetTimer = Simulator::Schedule(earlyRetTime, &LtePdcp::t_EarlyRetTimer_Expired, this);
       Reordering_PDCP_RX_COUNT = Next_PDCP_RX_SN;
     }
   }
 }
 
+void
+LtePdcp::t_EarlyRetTimer_Expired(){ // woody
+  NS_LOG_FUNCTION (this);
+NS_LOG_INFO("PDCP Early Ret Timer Expired at " << Simulator::Now().GetSeconds() << " Reordering_PDCP_RX_COUNT " << Reordering_PDCP_RX_COUNT);
+  m_doEarlyRet = true;
+//  m_pdcpSapUser->ReceivePdcpSdu(Last_Submitted_PDCP_Param);
+}
 
 void
 LtePdcp::t_ReordringTimer_Expired(){ // sjkang
   NS_LOG_FUNCTION (this);
 NS_LOG_INFO("PDCP Reordering Timer Expired at " << Simulator::Now().GetSeconds() << " Reordering_PDCP_RX_COUNT " << Reordering_PDCP_RX_COUNT);
+  m_doEarlyRet = false;
 
   uint16_t nextPDCP_SN;
   bool compareFlag = false;
@@ -521,6 +538,7 @@ NS_LOG_INFO("PDCP Reordering Timer Expired at " << Simulator::Now().GetSeconds()
     {
       PdcpDelayCalculater(nextPDCP_SN); 
       m_pdcpSapUser->ReceivePdcpSdu(PdcpBuffer[nextPDCP_SN]);
+      Last_Submitted_PDCP_Param = PdcpBuffer[nextPDCP_SN];
 
       printData("Reordered_SN", nextPDCP_SN);
       PdcpBuffer.erase(nextPDCP_SN);
@@ -588,6 +606,7 @@ NS_LOG_INFO("PDCP Reordering Timer Expired at " << Simulator::Now().GetSeconds()
   {
     Reordering_PDCP_RX_COUNT = Next_PDCP_RX_SN;
     t_ReorderingTimer= Simulator::Schedule(expiredTime, &LtePdcp::t_ReordringTimer_Expired, this);
+    t_EarlyRetTimer = Simulator::Schedule(earlyRetTime, &LtePdcp::t_EarlyRetTimer_Expired, this);
   }
 }
 
@@ -623,12 +642,12 @@ LtePdcp::PdcpDelayCalculater(uint16_t SN){
   }
   return PdcpDelay;
 }
-/*
+
 std::ofstream OutFile1("pdcp_1_RX_SN.txt");
 std::ofstream OutFile2("pdcp_1_Reordered_SN.txt");
 std::ofstream OutFile3("pdcp_1_RX_SN.txt");
 std::ofstream OutFile4("pdcp_2_Reordered_SN.txt");
-*/
+
 int count =0;
 
 Ptr <ns3::LtePdcp> tempAddress1;
@@ -640,7 +659,7 @@ LtePdcp::printData(string filename, uint16_t SN) // sjkang
   if (count ==0){ tempAddress1 =this;count ++;}
   count ++;
 
-/*  if (tempAddress1==this)
+  if (tempAddress1==this)
   {
     if (filename == "RX_SN")
     {
@@ -648,7 +667,7 @@ LtePdcp::printData(string filename, uint16_t SN) // sjkang
       {
         OutFile1.open ("1_RX_SN.txt");
       }
-    OutFile1 << this<< "\t"<<Simulator::Now ().GetSeconds() << "\t"<<"Received SN "<< "\t" << SN<< std::endl;
+    OutFile1 << this<< "\t"<<Simulator::Now ().GetSeconds() << "\t"<<"Received_SN"<< "\t" << SN<< std::endl;
     }
     else if (filename == "Reordered_SN")
     {
@@ -656,7 +675,7 @@ LtePdcp::printData(string filename, uint16_t SN) // sjkang
       {
         OutFile2.open ("1_Reordered_SN.txt");
       }
-      OutFile2 << this<< "\t"<<Simulator::Now ().GetSeconds() << "\t"<< "Reordered SN " << "\t" << SN<< std::endl;
+      OutFile2 << this<< "\t"<<Simulator::Now ().GetSeconds() << "\t"<< "Reordered_SN" << "\t" << SN<< std::endl;
      }
   }
   else
@@ -667,7 +686,7 @@ LtePdcp::printData(string filename, uint16_t SN) // sjkang
       {
         OutFile3.open ("2_RX_SN.txt");
       }
-      OutFile3 <<this<< "\t"<< Simulator::Now ().GetSeconds() << "\t"<<"Received SN "<< "\t" << SN<< std::endl;
+      OutFile3 <<this<< "\t"<< Simulator::Now ().GetSeconds() << "\t"<< "Received_SN"<< "\t" << SN<< std::endl;
     }
     else if (filename == "Reordered_SN")
     {
@@ -675,9 +694,9 @@ LtePdcp::printData(string filename, uint16_t SN) // sjkang
       {
         OutFile4.open ("2_Reordered_SN.txt");
       }
-      OutFile4<<this<< "\t"<< Simulator::Now ().GetSeconds() << "\t"<< "Reordered SN " << "\t" << SN<< std::endl;
+      OutFile4<<this<< "\t"<< Simulator::Now ().GetSeconds() << "\t"<< "Reordered_SN" << "\t" << SN<< std::endl;
     }
-  }*/
+  }
 }
 
 void
