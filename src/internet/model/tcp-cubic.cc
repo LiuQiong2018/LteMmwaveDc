@@ -424,13 +424,13 @@ void
 TcpCubic::CongestionStateSet (Ptr<TcpSocketState> tcb, const TcpSocketState::TcpCongState_t newState)
 {
   NS_LOG_FUNCTION (this << tcb << newState);
-if (newState == TcpSocketState::CA_OPEN) NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic CA_OPEN");
+/*if (newState == TcpSocketState::CA_OPEN) NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic CA_OPEN");
 else if (newState == TcpSocketState::CA_DISORDER) NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic CA_DISORDER");
 else if (newState == TcpSocketState::CA_CWR) NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic CA_CWR");
 else if (newState == TcpSocketState::CA_RECOVERY) NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic CA_RECOVERY");
 else if (newState == TcpSocketState::CA_LOSS) NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic CA_LOSS");
 else if (newState == TcpSocketState::CA_LAST_STATE) NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic CA_LAST_STATE");
-else NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic");
+else NS_LOG_UNCOND (Simulator::Now ().GetSeconds () << " TcpCubic");*/
 
   if (newState == TcpSocketState::CA_LOSS)
     {

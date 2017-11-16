@@ -115,6 +115,7 @@ int stateChanged = 0;
 double
 MmWave3gppBuildingsPropagationLossModel::DoCalcRxPower (double txPowerDbm, Ptr<MobilityModel> a, Ptr<MobilityModel> b) const
 {
+NS_LOG_UNCOND("DoCalcRxPower " << txPowerDbm - GetLoss (a,b));
 	return txPowerDbm - GetLoss (a,b);
 // woody
 /*if (Now().GetSeconds() < 2)
@@ -183,7 +184,7 @@ else
 }*/
 
 }
-//bool prevIsLos; // woody
+bool prevIsLos; // woody
 double
 MmWave3gppBuildingsPropagationLossModel::GetLoss (Ptr<MobilityModel> a, Ptr<MobilityModel> b) const
 {
@@ -221,11 +222,11 @@ MmWave3gppBuildingsPropagationLossModel::GetLoss (Ptr<MobilityModel> a, Ptr<Mobi
 				condition.m_channelCondition = 'n';
 				condition.m_shadowing = 0;
 			}
-/*if(intersect != prevIsLos){ // woody
+if(intersect != prevIsLos){ // woody
 	prevIsLos = intersect;
 	NS_LOG_UNCOND(Now().GetSeconds() << " intersect status changed");
 
-}*/
+}
 		}
 		else if(a1->IsIndoor () && b1->IsIndoor ())
 		{

@@ -1525,8 +1525,8 @@ TcpSocketBase::DupAck ()
 //NS_LOG_UNCOND (" " << Simulator::Now().GetSeconds() << " m_ssThresh " << m_tcb->m_ssThresh << " m_cWnd " << m_tcb->m_cWnd);
       NS_LOG_INFO (m_dupAckCount << " Dupack received in fast recovery mode."
                    "Increase cwnd to " << m_tcb->m_cWnd);
-NS_LOG_UNCOND (m_dupAckCount << " Dupack received in fast recovery mode." // woody
-                   "Increase cwnd to " << m_tcb->m_cWnd);
+//NS_LOG_UNCOND (m_dupAckCount << " Dupack received in fast recovery mode." // woody
+//                   "Increase cwnd to " << m_tcb->m_cWnd);
 
       SendPendingData (m_connected);
     }
@@ -1557,7 +1557,7 @@ TcpSocketBase::ReceivedAck (Ptr<Packet> packet, const TcpHeader& tcpHeader)
       && packet->GetSize () == 0)
     {
       // There is a DupAck
-NS_LOG_UNCOND("DupAck: ackNumber " << ackNumber << " m_tcb->m_nextTxSequence " << m_tcb->m_nextTxSequence);
+//NS_LOG_UNCOND("DupAck: ackNumber " << ackNumber << " m_tcb->m_nextTxSequence " << m_tcb->m_nextTxSequence);
       DupAck ();
     }
   else if (ackNumber == m_txBuffer->HeadSequence ()

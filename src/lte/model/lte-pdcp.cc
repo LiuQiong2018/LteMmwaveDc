@@ -643,10 +643,10 @@ LtePdcp::PdcpDelayCalculater(uint16_t SN){
   return PdcpDelay;
 }
 
-std::ofstream OutFile1("pdcp_1_RX_SN.txt");
-std::ofstream OutFile2("pdcp_1_Reordered_SN.txt");
-std::ofstream OutFile3("pdcp_1_RX_SN.txt");
-std::ofstream OutFile4("pdcp_2_Reordered_SN.txt");
+//std::ofstream OutFile1("pdcp_1_RX_SN.txt");
+//std::ofstream OutFile2("pdcp_1_Reordered_SN.txt");
+//std::ofstream OutFile3("pdcp_1_RX_SN.txt");
+//std::ofstream OutFile4("pdcp_2_Reordered_SN.txt");
 
 int count =0;
 
@@ -656,7 +656,7 @@ void
 LtePdcp::printData(string filename, uint16_t SN) // sjkang
 {
   NS_LOG_FUNCTION (this);
-  if (count ==0){ tempAddress1 =this;count ++;}
+/*  if (count ==0){ tempAddress1 =this;count ++;}
   count ++;
 
   if (tempAddress1==this)
@@ -696,7 +696,7 @@ LtePdcp::printData(string filename, uint16_t SN) // sjkang
       }
       OutFile4<<this<< "\t"<< Simulator::Now ().GetSeconds() << "\t"<< "Reordered_SN" << "\t" << SN<< std::endl;
     }
-  }
+  }*/
 }
 
 void
