@@ -606,6 +606,7 @@ NS_LOG_INFO("PDCP Reordering Timer Expired at " << Simulator::Now().GetSeconds()
   {
     Reordering_PDCP_RX_COUNT = Next_PDCP_RX_SN;
     t_ReorderingTimer= Simulator::Schedule(expiredTime, &LtePdcp::t_ReordringTimer_Expired, this);
+    t_EarlyRetTimer.Cancel();
     t_EarlyRetTimer = Simulator::Schedule(earlyRetTime, &LtePdcp::t_EarlyRetTimer_Expired, this);
   }
 }
@@ -632,7 +633,7 @@ LtePdcp::PdcpDelayCalculater(uint16_t SN){
     m_assistInfoPtr->pdcp_delay = PdcpDelay.GetSeconds();
     if (m_isEnbPdcp)
     {
-      m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
+//      m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
     }
     else
     {

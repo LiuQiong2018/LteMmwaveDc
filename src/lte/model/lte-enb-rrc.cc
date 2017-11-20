@@ -315,6 +315,11 @@ TypeId UeManager::GetTypeId (void)
                    UintegerValue (10),
                    MakeUintegerAccessor (&UeManager::m_splitTimerInterval),
                    MakeUintegerChecker<uint16_t> ())
+    .AddAttribute ("X2Delay", "x2delay", // woody
+                   UintegerValue (0),
+                   MakeUintegerAccessor (&UeManager::m_x2delay),
+                   MakeUintegerChecker<uint16_t> ())
+
 
     .AddTraceSource ("StateTransition",
                      "fired upon every UE state transition seen by the "
@@ -409,6 +414,7 @@ UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gt
         LteRrcSap::AssistInfo *m_assistInfo = new LteRrcSap::AssistInfo;
         // woody
         m_assistInfo->bearerId = bearerId;
+        m_assistInfo->teid = gtpTeid;
         m_assistInfo->is_enb = true;
 
         pdcp->m_enbRrc = m_rrc;
@@ -418,6 +424,7 @@ UeManager::SetupDataRadioBearer (EpsBearer bearer, uint8_t bearerId, uint32_t gt
         rlc->SetAssistInfoPtr(m_assistInfo);
 
         m_rrc->SetAssistInfoPtr(m_assistInfo);
+//NS_LOG_UNCOND("RRC_SetUpDRB\t" << (unsigned) bearerId << "\t" << this << "\t" << rlc);
       }
     }
 
@@ -700,8 +707,6 @@ UeManager::SendData3C (uint8_t bid, Ptr<Packet> p) // woody3C
   rlcSapProvider->TransmitPdcpPdu (params);
 }
 
-LteRrcSap::AssistInfo info[3];
-
 void
 UeManager::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo) // woody
 {
@@ -771,7 +776,13 @@ void
 UeManager::SplitTimer () // woody
 {
 	NS_LOG_FUNCTION (this);
-
+/*NS_LOG_UNCOND("UeManager::SplitTimer "
+        << Simulator::Now().GetSeconds() << "\t"
+        << this << "\t"
+        << (unsigned) info[0].bearerId << " " << (unsigned) info[0].teid << "\t"
+        << (unsigned) info[1].bearerId << " " << (unsigned) info[1].teid << "\t"
+        << info[0].rlc_tx_queue << "\t"
+        << info[1].rlc_tx_queue);*/
 	if (m_splitAlgorithm == 6)
 	{
 		double queueSizeMenb, queueSizeSenb;
@@ -786,12 +797,26 @@ UeManager::SplitTimer () // woody
 //			dataRateSenb = info[1].data_rate;
 			dataRateMenb = std::max(m_prevQueueSizeMenb - queueSizeMenb + m_sumPacketSizeMenb, 0.0);
 			dataRateSenb = std::max(m_prevQueueSizeSenb - queueSizeSenb + m_sumPacketSizeSenb, 0.0);
-			m_cumDataRateMenb = (1-beta)*m_cumDataRateMenb + beta*info[0].data_rate;//dataRateMenb;
-			m_cumDataRateSenb = (1-beta)*m_cumDataRateSenb + beta*info[1].data_rate;//dataRateSenb;
+
+			if (queueSizeMenb == 0) m_countZeroQueueMenb++;
+			else m_cumDataRateMenb = (1-beta)*m_cumDataRateMenb + beta*info[0].data_rate;//dataRateMenb;
+			if (queueSizeSenb == 0) m_countZeroQueueSenb++;
+			else m_cumDataRateSenb = (1-beta)*m_cumDataRateSenb + beta*info[1].data_rate;//dataRateSenb;
+
+			if (m_countZeroQueueMenb == 5)
+			{
+				m_cumDataRateMenb = m_initialDataRateMenb;
+				m_countZeroQueueMenb = 0;
+			}
+			if (m_countZeroQueueSenb == 5)
+			{
+				m_cumDataRateSenb = m_initialDataRateSenb;
+				m_countZeroQueueSenb = 0;
+			}
 
 			double tempt, nextEthaMenb;
 			tempt = std::max(m_packetNum * 1400.0 * (m_cumDataRateMenb + m_cumDataRateSenb), 0.000001);
-			nextEthaMenb = std::max(std::min(((m_cumDataRateMenb * (queueSizeSenb + (m_packetNum * 1400.0))) - (m_cumDataRateSenb * queueSizeMenb)) / tempt, 1.0), 0.02);
+			nextEthaMenb = std::max(std::min(((m_cumDataRateMenb * (queueSizeSenb + (m_packetNum * 1400.0))) - (m_cumDataRateSenb * queueSizeMenb) + (m_cumDataRateMenb * m_cumDataRateSenb * m_x2delay / m_splitTimerInterval)) / tempt, 1.0), 0.02);
 /*      
                 double dataRateMenb, dataRateSenb;
                 dataRateMenb = std::max(t->prevQueueSizeMenb - queueSizeMenb + (t->ethaMenb * t->packetNum), 0.0);
@@ -879,8 +904,8 @@ d);
     info[1].rlc_average_delay = 0;
     info[0].rlc_average_queue = 0;
     info[1].rlc_average_queue = 0;
-    m_cumDataRateMenb = 0;
-    m_cumDataRateSenb = 0;
+    m_cumDataRateMenb = m_initialDataRateMenb;
+    m_cumDataRateSenb = m_initialDataRateSenb;
     m_sumPacketSizeMenb = 0;
     m_sumPacketSizeSenb = 0;
   }
@@ -1000,7 +1025,10 @@ UeManager::SendData (uint8_t bid, Ptr<Packet> p)
                 }
                 else if (bearerInfo->m_dcType == 2){
                   p->RemoveHeader(gtpu_SN_Header);  //sjkang0601
-                  int t_splitter = SplitAlgorithm();
+                  int t_splitter;
+if (bearerInfo->m_gtpTeid == 2) t_splitter = SplitAlgorithm();
+else t_splitter = 1;
+//                  int t_splitter = SplitAlgorithm();
                   if (t_splitter == 1){
                     NS_LOG_INFO("**MeNB forward packet toward SeNB");
                     m_lastDirection = 1;
@@ -2365,6 +2393,7 @@ LteEnbRrc::DoDataRadioBearerSetupRequest (EpcEnbS1SapUser::DataRadioBearerSetupR
 {
   Ptr<UeManager> ueManager = GetUeManager (request.rnti);
   ueManager->SetDcCell (m_dcCell); // woody3C
+//NS_LOG_UNCOND("LteEnbRrc_DoDRBSetUp\t" << this << "\t" << (unsigned) request.bearerId << "\t" << (unsigned) request.gtpTeid);
   ueManager->SetupDataRadioBearer (request.bearer, request.bearerId, request.gtpTeid, request.transportLayerAddress, request.dcType); // woody3C
 
 /*  if (c_c ==0 && m_isMenb ){
@@ -3005,6 +3034,7 @@ LteEnbRrc::IsAssistInfoSink (){ // woody
 void
 LteEnbRrc::SendAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
   NS_LOG_FUNCTION (this);
+//NS_LOG_UNCOND ("LteEnbRrc_SendAssistInfo\t" << this);
   static const Time delay = MilliSeconds (0);
   if (m_assistInfoSinkEnb == NULL && m_assistInfoSinkPgw == NULL) NS_FATAL_ERROR ("cannot find AssistInfoSink");
 
@@ -3019,7 +3049,7 @@ void
 LteEnbRrc::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
   NS_LOG_FUNCTION (this);
   NS_ASSERT_MSG (m_isAssistInfoSink == true, "Not a assist info sink");
-
+/*
 //NS_LOG_UNCOND(" check " <<(unsigned) assistInfo.bearerId);
   std::map <uint32_t, X2uTeidInfo >::iterator itX2uTeidInfo;
   for (itX2uTeidInfo = m_x2uTeidInfoMapDc.begin (); itX2uTeidInfo != m_x2uTeidInfoMapDc.end (); itX2uTeidInfo++)
@@ -3031,8 +3061,17 @@ LteEnbRrc::RecvAssistInfo (LteRrcSap::AssistInfo assistInfo){ // woody
   if (itX2uTeidInfo == m_x2uTeidInfoMapDc.end ()) return;
 //  NS_ASSERT_MSG (itX2uTeidInfo != m_x2uTeidInfoMapDc.end (), "Cannot find matching bearer");
 
+  std::map<uint16_t, Ptr<UeManager> >::iterator itUeManager = m_ueMap.find (itX2uTeidInfo->second.rnti);*/
+
+  std::map <uint32_t, X2uTeidInfo >::iterator itX2uTeidInfo = m_x2uTeidInfoMapDc.find (assistInfo.teid);
+//  NS_ASSERT_MSG (itX2uTeidInfo != m_x2uTeidInfoMapDc.end (), "Cannot find matching teid " << (unsigned) assistInfo.teid);
+  if (itX2uTeidInfo == m_x2uTeidInfoMapDc.end ())
+    {
+      return;
+    }
   std::map<uint16_t, Ptr<UeManager> >::iterator itUeManager = m_ueMap.find (itX2uTeidInfo->second.rnti);
-  NS_ASSERT_MSG (itUeManager != m_ueMap.end (), "Cannot find matching UE Manager");
+
+  NS_ASSERT_MSG (itUeManager != m_ueMap.end (), "Cannot find matching UE Manager with teid " << assistInfo.teid << " rnti " << itX2uTeidInfo->second.rnti);
 
   itUeManager->second->RecvAssistInfo (assistInfo);
 }

@@ -1302,7 +1302,7 @@ LteRlcUm::GetBufferSize() // sjkang
       if (m_assistInfoPtr){
         m_assistInfoPtr->rlc_avg_buffer = averageBufferSize;
         if (m_isEnbRlc){
-          m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
+//          m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
         }
         else{
 // woody, temporarily AssistInfo blocked
@@ -1339,7 +1339,7 @@ eue"<<"\t"<<" the Head Of Line delay of the retransmission queue"<<std::endl;
     m_assistInfoPtr->rlc_tx_queue_hol_delay = (double)r.txQueueHolDelay/1000.0;
     m_assistInfoPtr->rlc_retx_queue_hol_delay = (double)r.retxQueueHolDelay/1000.0;
     if (m_isEnbRlc){
-      m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
+//      m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
     }
     else{
 // woody, temporarily AssistInfo blocked

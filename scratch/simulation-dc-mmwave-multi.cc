@@ -311,7 +311,7 @@ main (int argc, char *argv[])
 
 	bool log_packetflow = false;
 	bool enablePDCPReordering =true;
-	int nodeNum_t = 1;
+	int nodeNum_t = 2;
 	double simStopTime = 10;
 	bool rlcAmEnabled = true;
 	std::string protocol = "TcpCubic";
@@ -325,7 +325,7 @@ main (int argc, char *argv[])
 	int pdcpReorderingTimer_t = 50;
 	int pdcpEarlyRetTimer_t = 40;
 //	uint16_t x2LinkDelay =0;
-        std::string tcpDataRate = "1500Mb/s";
+        std::string tcpDataRate = "800Mb/s";
 	int splitTimerInterval = 20;
 	double alpha = 1/99.0;
 	double beta = 1/10.0;
@@ -561,21 +561,23 @@ main (int argc, char *argv[])
 	building->SetNRoomsX (1);
 	building->SetNRoomsY (1);
 
-/*	MobilityHelper uemobility;
+	MobilityHelper uemobility;
 	uemobility.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
 	uemobility.Install (ueNodes);
 	ueNodes.Get (0)->GetObject<MobilityModel> ()->SetPosition (Vector (50, -20, 3.0));
 	ueNodes.Get (0)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 10, 0));
+	ueNodes.Get (1)->GetObject<MobilityModel> ()->SetPosition (Vector (50, -20, 3.0));
+	ueNodes.Get (1)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 0, 0));
 
-	BuildingsHelper::Install (ueNodes);*/
+	BuildingsHelper::Install (ueNodes);
 
-	MobilityHelper uemobility;
+/*	MobilityHelper uemobility;
 	Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator> ();
 	uePositionAlloc->Add (Vector (40.0, 0.0, 3.0));
 	uemobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 	uemobility.SetPositionAllocator(uePositionAlloc);
 	uemobility.Install (ueNodes);
-	BuildingsHelper::Install (ueNodes);
+	BuildingsHelper::Install (ueNodes);*/
 
 	// Install LTE Devices to the nodes
 	NS_LOG_UNCOND("# Install LTE device to the nodes");
@@ -618,10 +620,11 @@ main (int argc, char *argv[])
 	ApplicationContainer sourceAppsForUDP;
 	ApplicationContainer sinkApps;
 
-	if (isTcp)
-	{
-		for (uint16_t i = 0; i < ueNodes.GetN (); i++)
+//	if (isTcp)
+//	{
+//		for (uint16_t i = 0; i < ueNodes.GetN (); i++)
 		{
+			uint16_t i = 0;
 			// Set the default gateway for the UE
 			Ptr<Node> ueNode = ueNodes.Get (i);
 			Ptr<Ipv4StaticRouting> ueStaticRouting = ipv4RoutingHelper.GetStaticRouting (ueNode->GetObject<Ipv4> ());
@@ -657,22 +660,23 @@ main (int argc, char *argv[])
 			 remoteHostContainer.Get(i)->AddApplication(app);
 
 		}
-	}
-	else
-	{
-		for(uint16_t i=0 ; i<ueNodes.GetN() ; i++)
+//	}
+//	else
+//	{
+//		for(uint16_t i=0 ; i<ueNodes.GetN() ; i++)
 		{
 
+			uint16_t i = 1;
 			// UdpServerHelper UdpServer(sinkPort);
 			//ApplicationContainer sinkApps = UdpServer.Install (ueNodes.Get (i));
 
-			PacketSinkHelper packetSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
-			sinkApps.Add (packetSinkHelper.Install (ueNodes.Get (i)));
+			PacketSinkHelper packetSinkHelperUdp ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), sinkPort));
+			sinkApps.Add (packetSinkHelperUdp.Install (ueNodes.Get (i)));
 
 			Address sinkAddress (InetSocketAddress (ueIpIface.GetAddress (i), sinkPort));
 			Ptr<Socket> ns3UdpSocket = Socket::CreateSocket (remoteHostContainer.Get (i), UdpSocketFactory::GetTypeId ());
 			Ptr<MyApp> app = CreateObject<MyApp> ();
-			app->Setup (ns3UdpSocket, sinkAddress, 1400, 5000000, DataRate ("100Mb/s"));
+			app->Setup (ns3UdpSocket, sinkAddress, 1400, 5000000, DataRate ("3000Mb/s"));
 
 			std::ostringstream fileName_3;
 			fileName_3<<"UE-" << i+1 <<"-UDP-DATA.txt";
@@ -688,11 +692,11 @@ main (int argc, char *argv[])
 				<< "number of Loss packet " << " \t  "<< " amount of Loss  " <<std::endl;
 			sinkApps.Get(i)->TraceConnectWithoutContext("Loss",MakeBoundCallback (&Loss, stream_2,i));
 
-			app->SetStartTime(Seconds(0.01*i + 0.1));
+			app->SetStartTime(Seconds(0.05));
 			app->SetStopTime(Seconds(simStopTime));
 			remoteHostContainer.Get (i)->AddApplication (app);
 		}
-	}
+//	}
 
 	sinkApps.Start (Seconds (0.));
 	sinkApps.Stop (Seconds (simStopTime));

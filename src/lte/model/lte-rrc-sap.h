@@ -61,6 +61,7 @@ public:
   struct AssistInfo // woody
   {
     uint8_t bearerId;
+    uint32_t teid;
     bool is_enb;
     bool is_menb;
 

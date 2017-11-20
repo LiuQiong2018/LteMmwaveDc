@@ -2214,7 +2214,7 @@ LteRlcAm::GetBufferSize(){
       if (m_assistInfoPtr){
         m_assistInfoPtr->rlc_avg_buffer = averageBufferSize;
         if (m_isEnbRlc){
-          m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
+//          m_enbRrc->SendAssistInfo (*m_assistInfoPtr);
         }
         else{
 // woody, temporarily AssistInfo blocked
@@ -2311,6 +2311,16 @@ OutFile_testAl5 <<
 
 if (m_isEnbRlc)
 {
+/*NS_LOG_UNCOND("RLCAM_AverageDelayTimer "
+        << Simulator::Now().GetSeconds() << "\t"
+	<< this << "\t"
+	<< (unsigned) m_assistInfoPtr->bearerId << " " << (unsigned) m_assistInfoPtr->teid << "\t"
+	<< m_assistInfoPtr->rlc_tx_queue << "\t"
+	<< sumBufferSize << "\t"
+	<< packetNum << "\t"
+	<< dataRate);*/
+
+
 /*NS_LOG_UNCOND(
          Simulator::Now().GetSeconds() << "\tRlcAm\t"
 	<< sumDelay << "\t"
@@ -2335,6 +2345,7 @@ LteRlcAm::IsEnbRlc () // woody
 
 void
 LteRlcAm::SetAssistInfoPtr (LteRrcSap::AssistInfo* assistInfoPtr){ // woody
+//NS_LOG_UNCOND("RLCAM_SetAssistInfoPtr\t" << this << "\t" << m_assistInfoPtr);
   NS_LOG_FUNCTION (this);
   m_assistInfoPtr = assistInfoPtr;
 }

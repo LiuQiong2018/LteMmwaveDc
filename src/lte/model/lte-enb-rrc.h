@@ -121,7 +121,7 @@ public:
   double targetQueueSize = 89500.0;
 
   // woody
-  double beta = 1/10.0;
+  double beta = 0.1;
   int m_splitTimerInterval = 10;
   bool m_splitInitialized = false; 
   double m_sumPacketSizeMenb, m_sumPacketSizeSenb;
@@ -130,6 +130,12 @@ public:
   int m_chunkSize = 50;
   double m_prevQueueSizeMenb, m_prevQueueSizeSenb;
   double m_cumDataRateMenb, m_cumDataRateSenb;
+  LteRrcSap::AssistInfo info[3];
+  int m_countZeroQueueMenb = 0;
+  int m_countZeroQueueSenb = 0;
+  double m_initialDataRateMenb = 180000;
+  double m_initialDataRateSenb = 2000000;
+  int m_x2delay;
 
   void SplitTimer ();
 
