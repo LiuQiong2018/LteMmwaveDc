@@ -318,7 +318,7 @@ main (int argc, char *argv[])
 	int bufferSize = 1024*1024*100;
 	uint16_t downlinkRb = 100;
 	int dcType_t = 2; // (1:1A, 2:3C, 3:1X)
-	bool isTcp = true;
+	bool isTcp = false;
 	isTcp_for_MyApp = isTcp;
 	int PacketSize = 1400; //60000;
 	int splitAlgorithm_t = 6; // (0:MeNB only, 1:SeNB only, 2:alternative, 3:Delay-based, 4:Queue-based, 6:NewQueue-based)
@@ -326,15 +326,18 @@ main (int argc, char *argv[])
 	int pdcpEarlyRetTimer_t = 40;
 //	uint16_t x2LinkDelay =0;
         std::string tcpDataRate = "800Mb/s";
-	int splitTimerInterval = 20;
+	int splitTimerInterval = 10;
 	double alpha = 1/10.0;
 	double beta = 1/10.0;
+	int x2delay_t = 10;
+
 //	Config::SetDefault ("ns3::TcpSocketBase::ReTxThreshold", UintegerValue (1));
 
 	std::string outputName;
 	uint8_t dcType;
 	uint16_t pdcpReorderingTimer, splitAlgorithm, pdcpEarlyRetTimer;
 	uint16_t nodeNum;
+	uint16_t x2delay;
 
 	//The available channel scenarios are 'RMa', 'UMa', 'UMi-StreetCanyon', 'InH-OfficeMixed', 'InH-OfficeOpen', 'InH-ShoppingMall'
 	std::string scenario = "UMa";
@@ -358,6 +361,7 @@ main (int argc, char *argv[])
 	cmd.AddValue("TCP", "TCP protocol", protocol);
 	cmd.AddValue("alpha", "alpha value for averaging etha", alpha);
 	cmd.AddValue("beta", "beta value for averaging data rate", beta);
+	cmd.AddValue("x2delay", "x2 delay", x2delay_t);
 
 	cmd.Parse(argc, argv);
 	nodeNum = (unsigned) nodeNum_t;
@@ -365,6 +369,7 @@ main (int argc, char *argv[])
 	pdcpReorderingTimer = (unsigned) pdcpReorderingTimer_t;
 	splitAlgorithm = (unsigned) splitAlgorithm_t;
 	pdcpEarlyRetTimer = (unsigned) pdcpEarlyRetTimer_t;
+	x2delay = (unsigned) x2delay_t;
 
 	NS_LOG_UNCOND("Simulation Setting");
 	NS_LOG_UNCOND(" -simTime(s) = " << simStopTime);
@@ -385,6 +390,9 @@ main (int argc, char *argv[])
 		LogComponentEnable ("PacketSink", LOG_INFO);
 		LogComponentEnable ("UdpClient", LOG_INFO);
 	}
+
+	Config::SetDefault ("ns3::MmWavePointToPointEpcHelper::X2LinkDelay", TimeValue(MilliSeconds(x2delay)));
+	Config::SetDefault ("ns3::UeManager::X2Delay", UintegerValue (x2delay));
 
 	Config::SetDefault ("ns3::UeManager::SplitAlgorithm", UintegerValue (splitAlgorithm));
 	Config::SetDefault ("ns3::UeManager::SplitTimerInterval", UintegerValue (splitTimerInterval));
@@ -673,9 +681,9 @@ main (int argc, char *argv[])
 			Address sinkAddress (InetSocketAddress (ueIpIface.GetAddress (i), sinkPort));
 			Ptr<Socket> ns3UdpSocket = Socket::CreateSocket (remoteHostContainer.Get (i), UdpSocketFactory::GetTypeId ());
 			Ptr<MyApp> app = CreateObject<MyApp> ();
-			app->Setup (ns3UdpSocket, sinkAddress, 1400, 5000000, DataRate ("4000Mb/s"));
-//			Simulator::Schedule (Seconds (2.0), &MyApp::SetDataRate, app, DataRate("1000Mb/s"));
-//			Simulator::Schedule (Seconds (4.0), &MyApp::SetDataRate, app, DataRate("200Mb/s"));
+			app->Setup (ns3UdpSocket, sinkAddress, 1400, 5000000, DataRate ("500Mb/s"));
+			Simulator::Schedule (Seconds (2.0), &MyApp::SetDataRate, app, DataRate("1000Mb/s"));
+			Simulator::Schedule (Seconds (4.0), &MyApp::SetDataRate, app, DataRate("200Mb/s"));
 
 			std::ostringstream fileName_3;
 			fileName_3<<"UE-" << i+1 <<"-UDP-DATA.txt";
@@ -710,7 +718,7 @@ main (int argc, char *argv[])
 	Config::Set ("/NodeList/*/DeviceList/*/TxQueue/MaxBytes", UintegerValue (1500*1000*1000));
 
 	NS_LOG_UNCOND("# Run simulation");
-	Simulator::Stop (Seconds (simStopTime));
+	Simulator::Stop (Seconds (simStopTime+2));
 	Simulator::Run ();
 
 	for (uint16_t i=0 ; i<ueNodes.GetN() ; i++){

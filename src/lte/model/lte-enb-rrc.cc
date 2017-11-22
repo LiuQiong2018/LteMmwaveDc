@@ -967,8 +967,10 @@ d);
       m_packetNum++;
       m_countChunk++;
 
-      if (m_countChunk < (1 - m_ethaMenb) * m_chunkSize) return 1;
-      else if ((m_countChunk >= (1 - m_ethaMenb) * m_chunkSize && m_countChunk <= m_chunkSize)) return 0;
+      if (m_countChunk < m_ethaMenb * m_chunkSize) return 0;
+      else if ((m_countChunk >= m_ethaMenb * m_chunkSize && m_countChunk <= m_chunkSize)) return 1;
+//      if (m_countChunk < (1 - m_ethaMenb) * m_chunkSize) return 1;
+//      else if ((m_countChunk >= (1 - m_ethaMenb) * m_chunkSize && m_countChunk <= m_chunkSize)) return 0;
       else
       {
         m_countChunk = 1;

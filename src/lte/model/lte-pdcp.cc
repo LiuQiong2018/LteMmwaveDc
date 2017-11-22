@@ -305,7 +305,7 @@ LtePdcp::DoTransmitPdcpSduDc (Ptr<Packet> p) // woody3C
 
 }
 
-
+std::ofstream Log_Delay("delay.txt");
 
 void
 LtePdcp::DoReceivePdu (Ptr<Packet> p)
@@ -320,6 +320,7 @@ LtePdcp::DoReceivePdu (Ptr<Packet> p)
     {
        delay = Simulator::Now() - pdcpTag.GetSenderTimestamp ();
     }
+if (m_isEnbPdcp != 1) Log_Delay << "delay " << delay.GetMilliSeconds() << std::endl;
 /*
   NS_ASSERT_MSG (p->PeekPacketTag (pdcpTag), "PdcpTag is missing");
     p->RemovePacketTag (pdcpTag);
@@ -366,6 +367,7 @@ LtePdcp::BufferingAndReordering(Ptr<Packet> p){ // sjkang
   {
     delay = Simulator::Now() - pdcpTag.GetSenderTimestamp ();
   }
+Log_Delay << "delay " << delay.GetMilliSeconds() << std::endl;
 
 /*NS_ASSERT_MSG (p->PeekPacketTag (pdcpTag), "PdcpTag is missing");
   p->RemovePacketTag (pdcpTag);

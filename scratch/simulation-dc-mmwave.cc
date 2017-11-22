@@ -312,7 +312,7 @@ main (int argc, char *argv[])
 	bool log_packetflow = true;
 	bool enablePDCPReordering =true;
 	int nodeNum_t = 1;
-	double simStopTime = 3;
+	double simStopTime = 4;
 	bool rlcAmEnabled = true;
 	std::string protocol = "TcpCubic";
 	int bufferSize = 1024*1024*100;
@@ -330,6 +330,7 @@ main (int argc, char *argv[])
 	double alpha = 1/99.0;
 	double beta = 1/10.0;
 	int x2delay_t = 10;
+	int dataSize = 1000000;
 
 //	Config::SetDefault ("ns3::TcpSocketBase::ReTxThreshold", UintegerValue (1));
 
@@ -362,6 +363,7 @@ main (int argc, char *argv[])
 	cmd.AddValue("alpha", "alpha value for averaging etha", alpha);
 	cmd.AddValue("beta", "beta value for averaging data rate", beta);
 	cmd.AddValue("x2delay", "x2 delay", x2delay_t);
+	cmd.AddValue("dataSize", "total data size", dataSize);
 
 	cmd.Parse(argc, argv);
 	nodeNum = (unsigned) nodeNum_t;
@@ -556,7 +558,7 @@ main (int argc, char *argv[])
         BuildingsHelper::Install (enbNodes);
 
         Ptr<ListPositionAllocator> senbPositionAlloc = CreateObject<ListPositionAllocator> ();
-        senbPositionAlloc->Add (Vector (80.0, 0.0, 3.0));
+        senbPositionAlloc->Add (Vector (150.0, 0.0, 3.0));
         MobilityHelper senbmobility;
         senbmobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
         senbmobility.SetPositionAllocator(senbPositionAlloc);
@@ -565,7 +567,7 @@ main (int argc, char *argv[])
 
 	MobilityHelper uemobility;
 	Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator> ();
-	uePositionAlloc->Add (Vector (40.0, 0.0, 3.0));
+	uePositionAlloc->Add (Vector (50.0, 0.0, 3.0));
 	uemobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 	uemobility.SetPositionAllocator(uePositionAlloc);
 	uemobility.Install (ueNodes);
@@ -628,7 +630,8 @@ main (int argc, char *argv[])
 			Ptr<Socket> ns3TcpSocket = Socket::CreateSocket (remoteHostContainer.Get (i), TcpSocketFactory::GetTypeId ());
 			Ptr<MyApp> app = CreateObject<MyApp> ();
 			Address sinkAddress (InetSocketAddress (ueIpIface.GetAddress (i), sinkPort));
-			app->Setup (ns3TcpSocket, sinkAddress, 1400, 100000, DataRate (tcpDataRate));//sychoi, tcp data rate config
+			int numPacket = dataSize/1400;
+			app->Setup (ns3TcpSocket, sinkAddress, 1400, numPacket, DataRate (tcpDataRate));//sychoi, tcp data rate config
 
 			std::ostringstream fileName;
 			fileName<<"UE-"<<i+1<<"-TCP-DATA.txt";
@@ -689,7 +692,7 @@ main (int argc, char *argv[])
 	}
 
 	sinkApps.Start (Seconds (0.));
-	sinkApps.Stop (Seconds (simStopTime));
+	sinkApps.Stop (Seconds (simStopTime+2));
 //	sourceAppsUL.Start (Seconds (0.1));
 //	sourceApps.Stop (Seconds (simStopTime));
 
@@ -701,7 +704,7 @@ main (int argc, char *argv[])
 	Config::Set ("/NodeList/*/DeviceList/*/TxQueue/MaxBytes", UintegerValue (1500*1000*1000));
 
 	NS_LOG_UNCOND("# Run simulation");
-	Simulator::Stop (Seconds (simStopTime));
+	Simulator::Stop (Seconds (simStopTime+2));
 	Simulator::Run ();
 
 	for (uint16_t i=0 ; i<ueNodes.GetN() ; i++){

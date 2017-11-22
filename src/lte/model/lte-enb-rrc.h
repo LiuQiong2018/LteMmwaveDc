@@ -127,7 +127,7 @@ public:
   double m_sumPacketSizeMenb, m_sumPacketSizeSenb;
   double m_packetNum, m_countChunk;
   double m_ethaMenb;
-  int m_chunkSize = 50;
+  int m_chunkSize = 20;
   double m_prevQueueSizeMenb, m_prevQueueSizeSenb;
   double m_cumDataRateMenb, m_cumDataRateSenb;
   LteRrcSap::AssistInfo info[3];

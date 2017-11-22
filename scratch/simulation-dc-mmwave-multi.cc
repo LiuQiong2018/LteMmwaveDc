@@ -330,11 +330,13 @@ main (int argc, char *argv[])
 	double alpha = 1/99.0;
 	double beta = 1/10.0;
 //	Config::SetDefault ("ns3::TcpSocketBase::ReTxThreshold", UintegerValue (1));
+	int x2delay_t = 10;
 
 	std::string outputName;
 	uint8_t dcType;
 	uint16_t pdcpReorderingTimer, splitAlgorithm, pdcpEarlyRetTimer;
 	uint16_t nodeNum;
+	uint16_t x2delay;
 
 	//The available channel scenarios are 'RMa', 'UMa', 'UMi-StreetCanyon', 'InH-OfficeMixed', 'InH-OfficeOpen', 'InH-ShoppingMall'
 	std::string scenario = "UMa";
@@ -358,6 +360,7 @@ main (int argc, char *argv[])
 	cmd.AddValue("TCP", "TCP protocol", protocol);
 	cmd.AddValue("alpha", "alpha value for averaging etha", alpha);
 	cmd.AddValue("beta", "beta value for averaging data rate", beta);
+	cmd.AddValue("x2delay", "x2 delay", x2delay_t);
 
 	cmd.Parse(argc, argv);
 	nodeNum = (unsigned) nodeNum_t;
@@ -365,6 +368,7 @@ main (int argc, char *argv[])
 	pdcpReorderingTimer = (unsigned) pdcpReorderingTimer_t;
 	splitAlgorithm = (unsigned) splitAlgorithm_t;
 	pdcpEarlyRetTimer = (unsigned) pdcpEarlyRetTimer_t;
+	x2delay = (unsigned) x2delay_t;
 
 	NS_LOG_UNCOND("Simulation Setting");
 	NS_LOG_UNCOND(" -simTime(s) = " << simStopTime);
@@ -385,6 +389,9 @@ main (int argc, char *argv[])
 		LogComponentEnable ("PacketSink", LOG_INFO);
 		LogComponentEnable ("UdpClient", LOG_INFO);
 	}
+
+	Config::SetDefault ("ns3::MmWavePointToPointEpcHelper::X2LinkDelay", TimeValue(MilliSeconds(x2delay)));
+	Config::SetDefault ("ns3::UeManager::X2Delay", UintegerValue (x2delay));
 
 	Config::SetDefault ("ns3::UeManager::SplitAlgorithm", UintegerValue (splitAlgorithm));
 	Config::SetDefault ("ns3::UeManager::SplitTimerInterval", UintegerValue (splitTimerInterval));
@@ -543,14 +550,14 @@ main (int argc, char *argv[])
         BuildingsHelper::Install (enbNodes);
 
         Ptr<ListPositionAllocator> senbPositionAlloc = CreateObject<ListPositionAllocator> ();
-        senbPositionAlloc->Add (Vector (350.0, 0.0, 10.0));
+        senbPositionAlloc->Add (Vector (80.0, 0.0, 10.0));
         MobilityHelper senbmobility;
         senbmobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
         senbmobility.SetPositionAllocator(senbPositionAlloc);
         senbmobility.Install (senbNodes);
         BuildingsHelper::Install (senbNodes);
 
-	Ptr < Building > building;
+/*	Ptr < Building > building;
 	building = Create<Building> ();
 	building->SetBoundaries (Box (150.0, 200.0,
 	                              0.0, 25.0,
@@ -559,14 +566,14 @@ main (int argc, char *argv[])
 	building->SetExtWallsType (Building::ConcreteWithWindows);
 	building->SetNFloors (1);
 	building->SetNRoomsX (1);
-	building->SetNRoomsY (1);
+	building->SetNRoomsY (1);*/
 
 	MobilityHelper uemobility;
 	uemobility.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
 	uemobility.Install (ueNodes);
-	ueNodes.Get (0)->GetObject<MobilityModel> ()->SetPosition (Vector (50, -20, 3.0));
-	ueNodes.Get (0)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 10, 0));
-	ueNodes.Get (1)->GetObject<MobilityModel> ()->SetPosition (Vector (50, -20, 3.0));
+	ueNodes.Get (0)->GetObject<MobilityModel> ()->SetPosition (Vector (40, 0, 3.0));
+	ueNodes.Get (0)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 0, 0));
+	ueNodes.Get (1)->GetObject<MobilityModel> ()->SetPosition (Vector (70, 0, 3.0));
 	ueNodes.Get (1)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 0, 0));
 
 	BuildingsHelper::Install (ueNodes);
@@ -692,8 +699,8 @@ main (int argc, char *argv[])
 				<< "number of Loss packet " << " \t  "<< " amount of Loss  " <<std::endl;
 			sinkApps.Get(i)->TraceConnectWithoutContext("Loss",MakeBoundCallback (&Loss, stream_2,i));
 
-			app->SetStartTime(Seconds(0.05));
-			app->SetStopTime(Seconds(simStopTime));
+			app->SetStartTime(Seconds(2));
+			app->SetStopTime(Seconds(3));
 			remoteHostContainer.Get (i)->AddApplication (app);
 		}
 //	}
