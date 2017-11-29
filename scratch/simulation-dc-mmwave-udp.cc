@@ -604,7 +604,7 @@ main (int argc, char *argv[])
 
 	NS_LOG_UNCOND("# Attach UE to eNB");
 //	mmwaveHelper->AttachToClosestEnb (ueDevs, senbMmWaveDevs);
-	mmwaveHelper->EnableTraces ();
+//	mmwaveHelper->EnableTraces ();
 	uint16_t sinkPort = 1235;
 	Ptr<EpcTft> tftDc = Create<EpcTft> ();
 	EpcTft::PacketFilter tftPacketFilter;
@@ -681,9 +681,9 @@ main (int argc, char *argv[])
 			Address sinkAddress (InetSocketAddress (ueIpIface.GetAddress (i), sinkPort));
 			Ptr<Socket> ns3UdpSocket = Socket::CreateSocket (remoteHostContainer.Get (i), UdpSocketFactory::GetTypeId ());
 			Ptr<MyApp> app = CreateObject<MyApp> ();
-			app->Setup (ns3UdpSocket, sinkAddress, 1400, 5000000, DataRate ("500Mb/s"));
-			Simulator::Schedule (Seconds (2.0), &MyApp::SetDataRate, app, DataRate("1000Mb/s"));
-			Simulator::Schedule (Seconds (4.0), &MyApp::SetDataRate, app, DataRate("200Mb/s"));
+			app->Setup (ns3UdpSocket, sinkAddress, 1400, 5000000, DataRate (tcpDataRate));
+//			Simulator::Schedule (Seconds (2.0), &MyApp::SetDataRate, app, DataRate("1000Mb/s"));
+//			Simulator::Schedule (Seconds (4.0), &MyApp::SetDataRate, app, DataRate("200Mb/s"));
 
 			std::ostringstream fileName_3;
 			fileName_3<<"UE-" << i+1 <<"-UDP-DATA.txt";

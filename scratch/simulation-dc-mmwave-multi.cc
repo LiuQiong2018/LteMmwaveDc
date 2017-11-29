@@ -550,7 +550,7 @@ main (int argc, char *argv[])
         BuildingsHelper::Install (enbNodes);
 
         Ptr<ListPositionAllocator> senbPositionAlloc = CreateObject<ListPositionAllocator> ();
-        senbPositionAlloc->Add (Vector (80.0, 0.0, 10.0));
+        senbPositionAlloc->Add (Vector (150.0, 0.0, 10.0));
         MobilityHelper senbmobility;
         senbmobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
         senbmobility.SetPositionAllocator(senbPositionAlloc);
@@ -571,9 +571,9 @@ main (int argc, char *argv[])
 	MobilityHelper uemobility;
 	uemobility.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
 	uemobility.Install (ueNodes);
-	ueNodes.Get (0)->GetObject<MobilityModel> ()->SetPosition (Vector (40, 0, 3.0));
+	ueNodes.Get (0)->GetObject<MobilityModel> ()->SetPosition (Vector (50, 0, 3.0));
 	ueNodes.Get (0)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 0, 0));
-	ueNodes.Get (1)->GetObject<MobilityModel> ()->SetPosition (Vector (70, 0, 3.0));
+	ueNodes.Get (1)->GetObject<MobilityModel> ()->SetPosition (Vector (140, 0, 3.0));
 	ueNodes.Get (1)->GetObject<ConstantVelocityMobilityModel> ()->SetVelocity (Vector (0, 0, 0));
 
 	BuildingsHelper::Install (ueNodes);
@@ -606,7 +606,7 @@ main (int argc, char *argv[])
 
 	NS_LOG_UNCOND("# Attach UE to eNB");
 //	mmwaveHelper->AttachToClosestEnb (ueDevs, senbMmWaveDevs);
-	mmwaveHelper->EnableTraces ();
+//	mmwaveHelper->EnableTraces ();
 	uint16_t sinkPort = 1235;
 	Ptr<EpcTft> tftDc = Create<EpcTft> ();
 	EpcTft::PacketFilter tftPacketFilter;
@@ -683,7 +683,7 @@ main (int argc, char *argv[])
 			Address sinkAddress (InetSocketAddress (ueIpIface.GetAddress (i), sinkPort));
 			Ptr<Socket> ns3UdpSocket = Socket::CreateSocket (remoteHostContainer.Get (i), UdpSocketFactory::GetTypeId ());
 			Ptr<MyApp> app = CreateObject<MyApp> ();
-			app->Setup (ns3UdpSocket, sinkAddress, 1400, 5000000, DataRate ("3000Mb/s"));
+			app->Setup (ns3UdpSocket, sinkAddress, 1400, 5000000, DataRate ("4000Mb/s"));
 
 			std::ostringstream fileName_3;
 			fileName_3<<"UE-" << i+1 <<"-UDP-DATA.txt";
@@ -699,8 +699,8 @@ main (int argc, char *argv[])
 				<< "number of Loss packet " << " \t  "<< " amount of Loss  " <<std::endl;
 			sinkApps.Get(i)->TraceConnectWithoutContext("Loss",MakeBoundCallback (&Loss, stream_2,i));
 
-			app->SetStartTime(Seconds(2));
-			app->SetStopTime(Seconds(3));
+			app->SetStartTime(Seconds(1.5));
+			app->SetStopTime(Seconds(2));
 			remoteHostContainer.Get (i)->AddApplication (app);
 		}
 //	}

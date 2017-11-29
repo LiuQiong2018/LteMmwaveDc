@@ -127,13 +127,13 @@ public:
   double m_sumPacketSizeMenb, m_sumPacketSizeSenb;
   double m_packetNum, m_countChunk;
   double m_ethaMenb;
-  int m_chunkSize = 20;
+  int m_chunkSize = 50;
   double m_prevQueueSizeMenb, m_prevQueueSizeSenb;
   double m_cumDataRateMenb, m_cumDataRateSenb;
   LteRrcSap::AssistInfo info[3];
   int m_countZeroQueueMenb = 0;
   int m_countZeroQueueSenb = 0;
-  double m_initialDataRateMenb = 180000;
+  double m_initialDataRateMenb = 90000;
   double m_initialDataRateSenb = 2000000;
   int m_x2delay;
 

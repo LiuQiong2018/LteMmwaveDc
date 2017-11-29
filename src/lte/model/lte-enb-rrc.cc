@@ -319,6 +319,15 @@ TypeId UeManager::GetTypeId (void)
                    UintegerValue (0),
                    MakeUintegerAccessor (&UeManager::m_x2delay),
                    MakeUintegerChecker<uint16_t> ())
+    .AddAttribute ("alpha", "alpha", // woody
+                   DoubleValue (0.1),
+                   MakeDoubleAccessor (&UeManager::alpha),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("beta", "beta", // woody
+                   DoubleValue (0.1),
+                   MakeDoubleAccessor (&UeManager::beta),
+                   MakeDoubleChecker<double> ())
+
 
 
     .AddTraceSource ("StateTransition",
@@ -798,17 +807,17 @@ UeManager::SplitTimer () // woody
 			dataRateMenb = std::max(m_prevQueueSizeMenb - queueSizeMenb + m_sumPacketSizeMenb, 0.0);
 			dataRateSenb = std::max(m_prevQueueSizeSenb - queueSizeSenb + m_sumPacketSizeSenb, 0.0);
 
-			if (queueSizeMenb == 0) m_countZeroQueueMenb++;
+			if (queueSizeMenb <= 1000 || info[0].rlc_average_delay <= 1000 * m_splitTimerInterval) m_countZeroQueueMenb++;
 			else m_cumDataRateMenb = (1-beta)*m_cumDataRateMenb + beta*info[0].data_rate;//dataRateMenb;
-			if (queueSizeSenb == 0) m_countZeroQueueSenb++;
+			if (queueSizeSenb <= 1000 || info[1].rlc_average_delay <= 1000 * m_splitTimerInterval) m_countZeroQueueSenb++;
 			else m_cumDataRateSenb = (1-beta)*m_cumDataRateSenb + beta*info[1].data_rate;//dataRateSenb;
 
-			if (m_countZeroQueueMenb == 5)
+			if (m_countZeroQueueMenb == 2)
 			{
 				m_cumDataRateMenb = m_initialDataRateMenb;
 				m_countZeroQueueMenb = 0;
 			}
-			if (m_countZeroQueueSenb == 5)
+			if (m_countZeroQueueSenb == 2)
 			{
 				m_cumDataRateSenb = m_initialDataRateSenb;
 				m_countZeroQueueSenb = 0;
@@ -816,7 +825,7 @@ UeManager::SplitTimer () // woody
 
 			double tempt, nextEthaMenb;
 			tempt = std::max(m_packetNum * 1400.0 * (m_cumDataRateMenb + m_cumDataRateSenb), 0.000001);
-			nextEthaMenb = std::max(std::min(((m_cumDataRateMenb * (queueSizeSenb + (m_packetNum * 1400.0))) - (m_cumDataRateSenb * queueSizeMenb) + (m_cumDataRateMenb * m_cumDataRateSenb * m_x2delay / m_splitTimerInterval)) / tempt, 1.0), 0.02);
+			nextEthaMenb = std::max(std::min(((m_cumDataRateMenb * (queueSizeSenb + (m_packetNum * 1400.0))) - (m_cumDataRateSenb * queueSizeMenb) + (m_cumDataRateMenb * m_cumDataRateSenb * m_x2delay / m_splitTimerInterval)) / tempt, 1.0), 0.01);
 /*      
                 double dataRateMenb, dataRateSenb;
                 dataRateMenb = std::max(t->prevQueueSizeMenb - queueSizeMenb + (t->ethaMenb * t->packetNum), 0.0);
@@ -847,6 +856,8 @@ OutFile_algm6
       << m_sumPacketSizeSenb << "\t"
       << info[0].data_rate << "\t"
       << info[1].data_rate << "\t"
+      << info[0].rlc_average_delay << "\t"
+      << info[1].rlc_average_delay << "\t"
       << std::endl;
 		}
 	}
@@ -895,7 +906,7 @@ d);
     m_splitInitialized = true;
     m_countChunk = 0;
     m_packetNum = 0;
-    m_ethaMenb = 0.2;
+    m_ethaMenb = 1;
     m_prevQueueSizeMenb = 0;
     m_prevQueueSizeSenb = 0;
 //    teidInfo->prevDelayMenb = 0;
@@ -904,6 +915,10 @@ d);
     info[1].rlc_average_delay = 0;
     info[0].rlc_average_queue = 0;
     info[1].rlc_average_queue = 0;
+    info[0].rlc_tx_queue = 0;
+    info[1].rlc_tx_queue = 0;
+    info[0].data_rate = 0;
+    info[1].data_rate = 0;
     m_cumDataRateMenb = m_initialDataRateMenb;
     m_cumDataRateSenb = m_initialDataRateSenb;
     m_sumPacketSizeMenb = 0;
@@ -977,6 +992,23 @@ d);
         return 1;
       }
       break;
+
+    case 7:
+      m_ethaMenb = 0.05;
+      m_packetNum++;
+      m_countChunk++;
+
+      if (m_countChunk < m_ethaMenb * m_chunkSize) return 0;
+      else if ((m_countChunk >= m_ethaMenb * m_chunkSize && m_countChunk <= m_chunkSize)) return 1;
+//      if (m_countChunk < (1 - m_ethaMenb) * m_chunkSize) return 1;
+//      else if ((m_countChunk >= (1 - m_ethaMenb) * m_chunkSize && m_countChunk <= m_chunkSize)) return 0;
+      else
+      {
+        m_countChunk = 1;
+        return 1;
+      }
+      break;
+
 
   }
   return -1;

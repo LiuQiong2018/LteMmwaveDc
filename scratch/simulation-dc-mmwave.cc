@@ -330,7 +330,7 @@ main (int argc, char *argv[])
 	double alpha = 1/99.0;
 	double beta = 1/10.0;
 	int x2delay_t = 10;
-	int dataSize = 1000000;
+	int dataSize = 1000000000;
 
 //	Config::SetDefault ("ns3::TcpSocketBase::ReTxThreshold", UintegerValue (1));
 
@@ -384,6 +384,10 @@ main (int argc, char *argv[])
 	NS_LOG_UNCOND(" -pdcpEarlyRetTimer(ms) = " << (unsigned) pdcpEarlyRetTimer);
 //	NS_LOG_UNCOND(" -x2LinkDelay(ms) = " << x2LinkDelay);
 	NS_LOG_UNCOND(" -tcpDataRate = " << tcpDataRate);
+	NS_LOG_UNCOND(" -x2delay = " << x2delay);
+	NS_LOG_UNCOND(" -dataSize = " << dataSize);
+	NS_LOG_UNCOND(" -alpha = " << alpha);
+	NS_LOG_UNCOND(" -beta = " << beta);
 
 	if (log_packetflow){
 		LogComponentEnable ("EpcEnbApplication", LOG_INFO);
@@ -398,6 +402,8 @@ main (int argc, char *argv[])
 
 	Config::SetDefault ("ns3::UeManager::SplitAlgorithm", UintegerValue (splitAlgorithm));
 	Config::SetDefault ("ns3::UeManager::SplitTimerInterval", UintegerValue (splitTimerInterval));
+	Config::SetDefault ("ns3::UeManager::alpha", DoubleValue (alpha));
+	Config::SetDefault ("ns3::UeManager::beta", DoubleValue (beta));
 	Config::SetDefault ("ns3::LtePdcp::ExpiredTime",TimeValue(MilliSeconds(pdcpReorderingTimer)));
 	Config::SetDefault ("ns3::LtePdcp::EarlyRetTime",TimeValue(MilliSeconds(pdcpEarlyRetTimer)));
 
@@ -515,7 +521,7 @@ main (int argc, char *argv[])
 		p2ph.SetDeviceAttribute ("Mtu", UintegerValue (1600));
 		if (i==0)
 		{
-			p2ph.SetChannelAttribute ("Delay", TimeValue (Seconds (0.01)));
+			p2ph.SetChannelAttribute ("Delay", TimeValue (Seconds (0.02)));
 		}
 		else
 		{
